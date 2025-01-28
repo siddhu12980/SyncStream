@@ -4,7 +4,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 from auth.util import verify_hash, generate_token
-from model.model import UserCreate, UserLogin
+from model.model import UserCreate, UserLogin,UserBase
 from db.db import get_session
 
 from user.service import UserService
@@ -15,7 +15,7 @@ user_service = UserService()
 
 REFRESH_TOKEN_EXP = 1
 
-@auth_router.post('/signup', status_code=status.HTTP_201_CREATED)
+@auth_router.post('/signup', status_code=status.HTTP_201_CREATED,response_model=UserBase)
 
 async def user_signup( user_data: UserCreate, session : AsyncSession = Depends(get_session)):
     
@@ -46,6 +46,7 @@ async def user_signin(user_data: UserLogin, session : AsyncSession = Depends(get
         access_token = generate_token(
             user_data = {
                 'email': is_User.email,
+                'username': is_User.username,
                 'user_id': str(is_User.id)
             }
         )
@@ -53,6 +54,7 @@ async def user_signin(user_data: UserLogin, session : AsyncSession = Depends(get
         refresh_token = generate_token(
             user_data={
                 'email': is_User.email,
+                'username': is_User.username,
                 'user_id': str(is_User.id)
             },
             refresh=True,
@@ -67,7 +69,9 @@ async def user_signin(user_data: UserLogin, session : AsyncSession = Depends(get
                 'refresh-token': refresh_token,
                 'user': {
                     'email': is_User.email,
+                    'username': is_User.username,
                     'id': str(is_User.id)
+                    
                 }
             }
         )

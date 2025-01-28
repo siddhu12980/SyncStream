@@ -29,7 +29,7 @@ class User(UserBase, table=True):
     is_active: Optional[bool] = Field(default=True)
     video_tasks: List["VideoTask"] = Relationship(back_populates="owner")
 
-class UserResponseModel(SQLModel):  # Fixed typo in class name
+class UserResponseModel(SQLModel):
     id: str
     username: str
     email: str

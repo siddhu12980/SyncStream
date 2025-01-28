@@ -41,7 +41,7 @@ class UserService:
         
         try:
             session.add(new_user)
-            await session.commit()
+            session.commit()
             session.refresh(new_user)
             
             return {
@@ -121,7 +121,7 @@ class UserService:
         existing_user.hashed_password = bcrypt.hash(user.password)
         
         session.add(existing_user)
-        await session.commit()
+        session.commit()
         session.refresh(existing_user)
         
         return {
