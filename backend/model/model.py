@@ -37,6 +37,7 @@ class UserResponseModel(SQLModel):
 
 class VideoTaskBase(SQLModel):
     video_url: str
+    title: str = Field(default="")
     status: ProcessingStatus = Field(default=ProcessingStatus.pending)
 
 class VideoTask(VideoTaskBase, table=True):

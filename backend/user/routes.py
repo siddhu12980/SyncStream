@@ -3,8 +3,6 @@ from .model import UserResponseModel, UserCreate
 from .service import UserService
 from db.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated, List
-from sqlmodel import Session
 
 
 user_router = APIRouter()
