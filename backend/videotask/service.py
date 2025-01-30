@@ -5,14 +5,13 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 class VideoService:
     
-    async def create_video_task(self,video:VideoTaskCreateModel, session: AsyncSession):
+    async def create_video_task(self,video:VideoTaskCreateModel, session: AsyncSession,id:str, key:str):
         print("Creating video task...", video)
         
         new_video_task = VideoTask(
-            video_url=video.video_url,
+            video_url=key,
             title=video.title,
-            # created_by=video.created_by,
-            # owner=video.created_by,
+            created_by=id
         )
         
         try:
@@ -20,11 +19,12 @@ class VideoService:
             session.commit()
             session.refresh(new_video_task)
             
+            print(new_video_task)
+
             return {
                 "id": new_video_task.id,
                 "title": new_video_task.title,
                 "description": new_video_task.description,
-                "is_active": new_video_task.is_active
             }
             
         except Exception as e:

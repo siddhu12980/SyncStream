@@ -4,6 +4,13 @@ import jwt
 from config.config import Config
 import uuid
 import logging
+
+import logging
+import boto3
+from botocore.exceptions import ClientError
+
+
+
   
 password_context = CryptContext(
     schemes=['bcrypt']
@@ -19,7 +26,6 @@ def verify_hash(password: str, hash: str) -> bool:
 
 def generate_token(user_data: dict, expiry: timedelta = None, refresh: bool = False):
     payload = {}
-
     payload['user'] = user_data
     payload['exp'] = datetime.now() + (
         expiry if expiry is not None else timedelta(seconds=ACCESS_TOKEN_EXPIRY)
@@ -50,4 +56,83 @@ def decode_token(token: str) -> dict:
         return None
     
     
+
+
+async def create_presigned_post(object_name, fields=None, conditions=None, expiration=3600 * 5):
+
+    bucket_name = "sidd-bucket-fast-api"
     
+    s3_client = boto3.client('s3')
+    
+    if conditions is None:
+        conditions = []
+        
+        
+    
+    # Allow files up to 100MB - adjust as needed
+    conditions.append(['content-length-range', 1, 100 * 1024 * 1024])
+    
+    
+    # cors_configuration = {
+    # 'CORSRules': [{
+    #     'AllowedHeaders': ['Authorization'],
+    #     'AllowedMethods': ['GET', 'PUT' , 'POST'],
+    #     'AllowedOrigins': ['*'],
+    #     'ExposeHeaders': ['ETag', 'x-amz-request-id'],
+    #     'MaxAgeSeconds': 3000
+    # }]
+    
+    # }
+    
+    # s3_client.put_bucket_cors(Bucket=bucket_name,
+    #                CORSConfiguration=cors_configuration)
+    
+    
+    
+    try:
+
+        response = s3_client.generate_presigned_post(
+            Bucket=bucket_name,
+            Key=object_name,
+            Fields=fields,
+            Conditions=conditions,
+            ExpiresIn=expiration,
+
+        )
+        
+            
+        return response
+        
+    except ClientError as e:
+        logging.error(f"Error generating presigned URL: {e}")
+        return None
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        return None
+    
+def verify_file_upload(object_key):
+    s3_client = boto3.client('s3')
+    bucket_name = "sidd-bucket-fast-api"
+    
+    try:
+        # Try to head the object (checks if exists)
+        response = s3_client.head_object(
+            Bucket=bucket_name,
+            Key=object_key
+        )
+        # If we get here, file exists
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        else:
+            raise e
+
+# API endpoint to verify and update DB
+async def verify_upload(object_key: str):
+    if verify_file_upload(object_key):
+        # Update your database here
+        await update_db_record(object_key, status="uploaded")
+        return {"status": "success", "message": "File uploaded and verified"}
+    else:
+        return {"status": "error", "message": "File not found in S3"}
