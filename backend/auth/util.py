@@ -97,7 +97,6 @@ async def create_presigned_post(object_name, fields=None, conditions=None, expir
             Fields=fields,
             Conditions=conditions,
             ExpiresIn=expiration,
-
         )
         
             
@@ -114,25 +113,35 @@ def verify_file_upload(object_key):
     s3_client = boto3.client('s3')
     bucket_name = "sidd-bucket-fast-api"
     
+    # List of accepted video MIME types
+    valid_video_types = [
+        'video/mp4',
+        'video/mpeg',
+        'video/quicktime',
+        'video/x-msvideo',
+        'video/x-ms-wmv',
+        'video/webm',
+        'video/x-matroska'
+    ]
+    
     try:
-        # Try to head the object (checks if exists)
         response = s3_client.head_object(
             Bucket=bucket_name,
             Key=object_key
         )
-        # If we get here, file exists
-        return True
+        
+        content_type = response.get('ContentType', '')
+        
+        if content_type in valid_video_types:
+            return True
+        
+        else:
+            print(f"Invalid file type: {content_type}. Expected a video file.")
+            return False
+            
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
             return False
         else:
             raise e
 
-# API endpoint to verify and update DB
-async def verify_upload(object_key: str):
-    if verify_file_upload(object_key):
-        # Update your database here
-        await update_db_record(object_key, status="uploaded")
-        return {"status": "success", "message": "File uploaded and verified"}
-    else:
-        return {"status": "error", "message": "File not found in S3"}

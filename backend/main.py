@@ -2,13 +2,13 @@ from fastapi import FastAPI,HTTPException
 
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from sqlmodel import Session,select
+from sqlmodel import Session,select, and_
 
 from db import db
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from auth.util import decode_token
-from model.model import User
+from model.model import User,VideoTask
 from pydantic import BaseModel
 from user.routes import user_router
 from auth.router import auth_router
@@ -141,9 +141,8 @@ class S3Event(BaseModel):
 
 SECRET_KEY = "your-secret-key"
 
-@app.post("/s3",status_code=200)
-async def read_s3(request: Request,session : AsyncSession = Depends(get_session)):
-    
+@app.post("/s3", status_code=200)
+async def read_s3(request: Request, session: AsyncSession = Depends(get_session)):
     auth_header = request.headers.get("Authorization")
     
     if auth_header != SECRET_KEY:
@@ -151,34 +150,50 @@ async def read_s3(request: Request,session : AsyncSession = Depends(get_session)
 
     print("Auth passed")
     
-    body = await request.body()
     try:
+        body = await request.body()
         data = json.loads(body)
-        
         s3_event = S3Event(**data)
         
         print(f"\n Received S3 Event: {s3_event} \n")
         
-        print("Saving to database...")
-        
         parts = s3_event.object_key.split("/")
-        
         if len(parts) < 2:
             raise HTTPException(status_code=400, detail="Invalid object_key format")
         
         user_id = parts[0]
+        print("user", user_id)
         
-        print("user",user_id)
+        statement = select(VideoTask).where(
+            and_(
+                VideoTask.created_by == user_id,
+                VideoTask.video_url == s3_event.object_key,
+                VideoTask.status == "created"
+            )
+        )
+        result =  session.exec(statement)
+        task = result.first()
         
+        if task:
+            if task.status == "created":
+                task.status = "verified"
+                session.commit()
+                print(f"Updated task status to verified for task: {task.id}")
+                return {"message": "Task status updated successfully"}
+            else:
+                print(f"Task {task.id} already processed (current status: {task.status})")
+                return {"message": f"Task already in {task.status} status, no update needed"}
+        else:
+            print(f"No matching task found for user {user_id} and URL {s3_event.object_key}")
+            return {"message": "No matching task found to update"}
         
-        return {"message": "Webhook received successfully"}
-    
-    
-    
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+    except Exception as e:
+        print(f"Error processing S3 event: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing S3 event: {str(e)}")
 
 
 app.include_router(user_router,  prefix="/user", tags=["user"])
