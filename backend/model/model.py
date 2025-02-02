@@ -3,16 +3,16 @@ from typing import List
 from uuid import uuid4
 from sqlmodel import SQLModel, Field,Relationship
 from datetime import datetime
-from typing import Optional,Dict,Any
-from pydantic import BaseModel
+from typing import Optional
+
 
 #create a post req
 
 
 
+
+
 class ProcessingStatus(str, Enum):
-    created="created"
-    verified="verified"
     pending = "pending"
     processing = "processing"
     completed = "completed"
@@ -50,9 +50,8 @@ class VideoTask(VideoTaskBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     created_by: str = Field(foreign_key="user.id")  
     created_at: str = Field(default_factory=lambda: datetime.now())
-    updated_at: str = Field(default_factory=lambda: datetime.now())
-    status: ProcessingStatus = Field(default=ProcessingStatus.created)
-    owner: User = Relationship(back_populates="video_tasks")
+    status: ProcessingStatus = Field(default=ProcessingStatus.pending)
+    owner: User = Relationship(back_populates="video_tasks")  
 
 class VideoTaskResponseModel(SQLModel):
     id: str
@@ -64,15 +63,5 @@ class VideoTaskResponseModel(SQLModel):
 class VideoTaskUpdateModel(SQLModel):
     status: ProcessingStatus
 
-class VideoTaskCreateModel(SQLModel):
-    title: str
-
-class TaskResponseModel(BaseModel):
-    """
-    Response model for task details.
-    """
-    id: str
-    fields: Dict[str, Any]  # Assuming 'fields' is a dictionary
-    url: str
-    data: Dict[str, Any] 
-
+class VideoTaskCreateModel(VideoTaskBase):
+    pass

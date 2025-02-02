@@ -1,7 +1,0 @@
-fastapi[standard]==0.113.0
-pydantic==2.8.0
-SQLAlchemy=2.0.37 
-greenlet=3.1.1 
-sqlmodel=0.0.22
-
-# docker run --name my-postgres -e POSTGRES_USER=myuser -e POSTGRES_PASSWORD=mypassword -e POSTGRES_DB=mydb -p 5432:5432 -d postgres

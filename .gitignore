@@ -3,3 +3,10 @@
 **/__pycache__
 **/.env
 **/.venv
+worker/videos
+worker/__pycache__
+**/**/videos
+node_modules
+**/node_modules
+**/worker/videos
+**/backend/videos
