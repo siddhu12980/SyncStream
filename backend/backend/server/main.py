@@ -18,6 +18,7 @@ from fastapi import Depends
 from backend.server.db.db import get_session
 from backend.server.room.room_routes import router as room_router
 from typing import Callable
+from backend.server.public.public_routes import public_router
 import json
 
 import logging
@@ -72,12 +73,19 @@ logger = logging.getLogger(__name__)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next: Callable):
-    # Always allow OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
         return await call_next(request)
-        
-    # Skip auth for login and signup routes
-    if request.url.path in ["/auth/login", "/auth/signup" ,"/docs", "/openapi.json", "/favicon.ico" , "/s3"]:
+
+    if request.url.path in [
+        "/auth/login", 
+        "/auth/signup",
+        "/docs", 
+        "/openapi.json", 
+        "/favicon.ico",
+        "/s3",
+        "/ws",
+        "/public/room"  # Add the public room route
+    ] or request.url.path.startswith("/public/room/"):  # Allow room ID lookups
         return await call_next(request)
 
     try:
@@ -216,14 +224,16 @@ app.include_router(user_router,  prefix="/user", tags=["user"])
 app.include_router(auth_router,prefix="/auth",tags=["auth"])
 app.include_router(video_router,prefix="/video",tags=["video"])
 app.include_router(room_router,prefix="/room",tags=["room"])
+app.include_router(public_router,prefix="/public",tags=["public"])
 
 @app.websocket("/ws/{room_id}")
 async def websocket_endpoint(
     websocket: WebSocket, 
     room_id: str, 
-    user_id: str = Query(...)  # ... means required parameter
+    user_id: str = Query(...),  # ... means required parameter
+    name: str = Query(...)
 ):
-    await handle_websocket(websocket, room_id, user_id)
+    await handle_websocket(websocket, room_id, user_id, name)
 
 if __name__ == "__main__":
     import uvicorn

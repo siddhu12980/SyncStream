@@ -8,7 +8,7 @@ class ConnectionManager:
         # room_id -> set of WebSocket connections
         self.active_rooms: Dict[str, Dict[str, WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket, room_id: str, user_id: str):
+    async def connect(self, websocket: WebSocket, room_id: str, user_id: str, name: str):
         await websocket.accept()
         if room_id not in self.active_rooms:
             self.active_rooms[room_id] = {}
@@ -19,6 +19,7 @@ class ConnectionManager:
             room_id,
             {
                 "type": "join",
+                "user_name": name,
                 "user_id": user_id,
                 "message": f"User {user_id} joined the room",
                 "timestamp": datetime.now().isoformat()
@@ -51,11 +52,13 @@ class ConnectionManager:
                 print(f"User {user_id} left room {room_id}. {len(self.active_rooms[room_id])} users remaining")
 
     async def broadcast_to_room(self, room_id: str, message: dict, exclude_user: str = None):
+
         if room_id in self.active_rooms:
             disconnected_users = []
             for user_id, connection in self.active_rooms[room_id].items():
                 if exclude_user != user_id:  # Don't send to excluded user
                     try:
+                        print(f'sending message to ${user_id}')
                         await connection.send_json(message)
                     except WebSocketDisconnect:
                         disconnected_users.append(user_id)

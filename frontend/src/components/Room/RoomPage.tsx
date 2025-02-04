@@ -6,6 +6,8 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { ChatBox } from './ChatBox';
 import { userState } from '../../store/userStore';
 import { useRecoilValue } from 'recoil';
+import { useEffect, useState } from 'react';
+import { useWebSocket, VideoEvent } from '../../hooks/useWebSocket';
 
 interface Room {
   id: string;
@@ -18,26 +20,58 @@ interface Room {
 }
 
 export default function RoomPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const auth = useRecoilValue(userState);
+  const { id} = useParams();
 
-  if (!auth.user) {
-    navigate('/', { replace: true });
+
+
+  const navigate = useNavigate();
+
+  if (!id) {
+    navigate('/');
     return null;
   }
+
+  const auth = useRecoilValue(userState);
+
+  const ramdom_id = Math.random().toString(36).substring(2, 15);
+
+  const local_store_user_Name = localStorage.getItem('userName');
+  
+  
+  const user_id = auth.user?.id || ramdom_id;
+  const user_name = auth.user?.username || local_store_user_Name || ramdom_id;
+
+
 
   const { data: room, isLoading, isError,isSuccess } = useQuery({
     queryKey: ['room', id],
     queryFn: async () => {
       if (!id) throw new Error('No room ID');
-      const response = await axios1.get(`/room/${id}`);
+      const response = await axios1.get(`/public/room/${id}`);
       return response.data as Room;
     },
     staleTime: 1000 * 60,
     retry: false,
     enabled: true,
   });
+
+  const { messages, isConnected, sendMessage, sendVideoEvent, onVideoEvent } = useWebSocket(
+    id,
+    user_name,
+    user_id
+  );
+
+  const [lastVideoEvent, setLastVideoEvent] = useState<{
+    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    video_time: number;
+  } | null>(null);
+
+  useEffect(() => {
+    onVideoEvent((event) => {
+      console.log('handelling Remote Video Event:', event);
+      setLastVideoEvent(event);
+    });
+  }, [onVideoEvent]);
 
   if (isLoading) {
     return (
@@ -59,6 +93,9 @@ export default function RoomPage() {
     return null;
   }
 
+  const url = 'https://sidd-bucket-fast-api.s3.ap-south-1.amazonaws.com/videos/80f667e4-78d0-48bf-a3c7-377ab33480f8/master.m3u8'
+
+
   return (
     <div className="min-h-screen bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto">
@@ -78,11 +115,24 @@ export default function RoomPage() {
             )}
 
             <div className="bg-gray-800 rounded-lg overflow-hidden">
-              {room.video_key && <VideoPlayer videoUrl={room.video_key} />}
+              {room.video_key && (
+
+                <VideoPlayer 
+                  videoUrl={url} 
+                  onVideoEvent={sendVideoEvent}
+                  remoteVideoEvent={lastVideoEvent || undefined}
+                />
+              )}
             </div>
           </div>
 
-          <ChatBox roomId={room.id}  currentUserId={auth.user!.id}/>
+          <ChatBox 
+            messages={messages}
+            isConnected={isConnected} 
+            sendMessage={sendMessage}
+            currentUserId={user_id}
+            userName={user_name}
+          />  
         </div>
       </div>
     </div>

@@ -6,10 +6,10 @@ import json
 
 manager = ConnectionManager()
 
-async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str):
+async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, name: str):
     try:
         # First connect the websocket
-        await manager.connect(websocket, room_id, user_id)
+        await manager.connect(websocket, room_id, user_id, name)
         print(f"User {user_id} connected to room {room_id}")
         print(f"Room {room_id} has {len(manager.active_rooms[room_id])} users")
         
@@ -23,7 +23,6 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str):
                 if "type" not in data:
                     await websocket.send_json({
                         "type": "error",
-                        
                         "message": "Missing event type",
                         "timestamp": datetime.now().isoformat()
                     })
@@ -37,6 +36,7 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str):
                 message = {
                     "type": event_type,
                     "user_id": user_id,
+                    "user_name": name,
                     "timestamp": current_time,
                     **data
                 }
@@ -51,7 +51,7 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         continue
                     await manager.broadcast_to_room(room_id, message)
                 
-                elif event_type in ["play", "pause"]:
+                elif event_type in ["video_event"]:
                     if "video_time" not in data:
                         await websocket.send_json({
                             "type": "error",
@@ -61,26 +61,7 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         continue
                     await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
                 
-                elif event_type in ["forward_10", "back_10"]:
-                    if "video_time" not in data:
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": "Missing video timestamp",
-                            "timestamp": current_time
-                        })
-                        continue
-                    await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
-                
-                elif event_type == "video_time":
-                    if "video_time" not in data:
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": "Missing video timestamp",
-                            "timestamp": current_time
-                        })
-                        continue
-                    await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
-                
+
                 else:
                     await websocket.send_json({
                         "type": "error",

@@ -1,38 +1,41 @@
-import { userState } from "../store/userStore";
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useRecoilValue } from 'recoil';
 import { toast } from 'sonner';
 
-interface Message {
-    type: string;
+interface ChatMessage {
+    type: 'chat' | 'join' | 'leave';
     error?: string;
     user_id: string;
     message: string;
+    user_name?: string;
     timestamp: string;
 }
 
-// {
-//     "type": "join",
-//     "user_id": "a755b447-7da6-4b04-a364-50b11b0ebbab",
-//     "message": "User a755b447-7da6-4b04-a364-50b11b0ebbab joined the room",
-//     "timestamp": "2025-02-04T22:44:30.154925"
-// }
+export interface VideoEvent {
+    type: 'video_event';
+    user_id: string;
+    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    video_time: number;
+    timestamp: string;
+}
 
-export const useWebSocket = (roomId: string) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+type Message = ChatMessage | VideoEvent;
+
+
+export const useWebSocket = (roomId: string, userName: string, userId: string) => {
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const auth = useRecoilValue(userState);
 
-  if (!auth.user) return { messages: [], isConnected: false, sendMessage: () => {} };
-  
+  const wsRef = useRef<WebSocket | null>(null);
+  const videoEventCallbackRef = useRef<((event: VideoEvent) => void) | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    if (!auth.user?.id) return { messages: [], isConnected: false, sendMessage: () => {} };
+    if (!userId || !userName) return { messages: [], isConnected: false, sendMessage: () => {} };
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/${roomId}?user_id=${auth.user!.id}`);
+    const ws = new WebSocket(`ws://localhost:8000/ws/${roomId}?user_id=${userId}&name=${userName}`);
+
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -41,9 +44,18 @@ export const useWebSocket = (roomId: string) => {
     };
 
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      const message = JSON.parse(event.data) as Message;
       console.log('Received message:', message);
-      setMessages(prev => [...prev, message]);
+      
+      if (message.type === 'video_event') {
+        // Handle video events  
+        console.log('Video event:', message);
+        videoEventCallbackRef.current?.(message as VideoEvent);
+
+      } else {
+        // Handle chat messages
+        setMessages(prev => [...prev, message as ChatMessage]);
+      }
     };
 
     ws.onclose = () => {
@@ -79,17 +91,42 @@ export const useWebSocket = (roomId: string) => {
 
       wsRef.current.send(JSON.stringify({ 
         type: 'chat',
-        user_id: auth.user!.id,
+        user_id: userId,
         message: content,
+        user_name: userName
        }));
     } else {
       toast.error('Not connected to chat');
     }
+  }, [userId, userName]);
+
+  const sendVideoEvent = useCallback((event: {
+    type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    video_time: number;
+  }) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('Sending video event:', event);
+
+      wsRef.current.send(JSON.stringify({
+        type: 'video_event',
+        user_id: userId,
+        event_type: event.type,
+        video_time: event.video_time
+      }));
+    } else {
+      toast.error('Not connected to video sync');
+    }
+  }, [userId]);
+
+  const onVideoEvent = useCallback((callback: (event: VideoEvent) => void) => {
+    videoEventCallbackRef.current = callback;
   }, []);
 
   return {
     messages,
     isConnected,
-    sendMessage
+    sendMessage,
+    sendVideoEvent,
+    onVideoEvent
   };
 }; 

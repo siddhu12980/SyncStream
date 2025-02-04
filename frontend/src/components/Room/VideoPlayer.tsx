@@ -3,9 +3,19 @@ import Hls from 'hls.js';
 
 interface VideoPlayerProps {
   videoUrl: string;
+  
+  onVideoEvent: (event: {
+    type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    video_time: number;
+  }) => void;
+
+  remoteVideoEvent?: {
+    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    video_time: number;
+  };
 }
 
-export function VideoPlayer({ videoUrl }: VideoPlayerProps) {
+export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -73,27 +83,63 @@ export function VideoPlayer({ videoUrl }: VideoPlayerProps) {
     };
   }, [videoUrl]);
 
-  // Keyboard controls
+  // Add video event listeners
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => {
+      onVideoEvent({ type: 'play', video_time: video.currentTime });
+    };
+
+    const handlePause = () => {
+      onVideoEvent({ type: 'pause', video_time: video.currentTime });
+    };
+
+    const handleSeek = () => {
+      onVideoEvent({ type: 'video_time', video_time: video.currentTime });
+    };
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('seeked', handleSeek);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('seeked', handleSeek);
+    };
+  }, [onVideoEvent]);
+
+  // Modify keyboard controls to emit events
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleKeyPress = (e: KeyboardEvent) => {
       switch (e.key.toLowerCase()) {
-        case ' ':  // Spacebar
-        case 'k':  // YouTube-style play/pause
+        case ' ':
+        case 'k':
           e.preventDefault();
-          video.paused ? video.play() : video.pause();
+          if (video.paused) {
+            video.play();
+            onVideoEvent({ type: 'play', video_time: video.currentTime });
+          } else {
+            video.pause();
+            onVideoEvent({ type: 'pause', video_time: video.currentTime });
+          }
           break;
         
-        case 'arrowleft':  // Rewind 10 seconds
+        case 'arrowleft':
           e.preventDefault();
           video.currentTime = Math.max(video.currentTime - 10, 0);
+          onVideoEvent({ type: 'back_10', video_time: video.currentTime });
           break;
         
-        case 'arrowright':  // Forward 10 seconds
+        case 'arrowright':
           e.preventDefault();
           video.currentTime = Math.min(video.currentTime + 10, video.duration);
+          onVideoEvent({ type: 'forward_10', video_time: video.currentTime });
           break;
         
         case 'j':  // Rewind 5 seconds
@@ -116,20 +162,6 @@ export function VideoPlayer({ videoUrl }: VideoPlayerProps) {
         case 'm':  // Toggle mute
           video.muted = !video.muted;
           break;
-        
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-          // Jump to percentage of video (0-9 for 0%-90%)
-          video.currentTime = (video.duration * parseInt(e.key)) / 10;
-          break;
           
         case 'arrowup':  // Volume up
           e.preventDefault();
@@ -143,14 +175,33 @@ export function VideoPlayer({ videoUrl }: VideoPlayerProps) {
       }
     };
 
-    // Add keyboard event listener
     window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [onVideoEvent]);
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []);
+  // Handle incoming remote video events
+  useEffect(() => {
+    if (!remoteVideoEvent || !videoRef.current) return;
+    console.log('Remote video event:', remoteVideoEvent);
+    
+    const video = videoRef.current;
+    
+    switch (remoteVideoEvent.event_type) {
+      case 'play':
+        video.currentTime = remoteVideoEvent.video_time;
+        video.play();
+        break;
+      case 'pause':
+        video.currentTime = remoteVideoEvent.video_time;
+        video.pause();
+        break;
+      case 'video_time':
+      case 'forward_10':
+      case 'back_10':
+        video.currentTime = remoteVideoEvent.video_time;
+        break;
+    }
+  }, [remoteVideoEvent]);
 
   return (
     <div className="aspect-video bg-black relative group">
@@ -159,20 +210,10 @@ export function VideoPlayer({ videoUrl }: VideoPlayerProps) {
         className="w-full h-full"
         controls
         playsInline
+        autoPlay={false}
+        muted={true}
+
       />
-      
-      {/* Optional: Show keyboard shortcuts hint on hover */}
-      <div className="absolute bottom-0 right-0 p-4 bg-black/60 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <div className="space-y-1">
-          <p>Space/K: Play/Pause</p>
-          <p>←/→: 10s skip</p>
-          <p>J/L: 5s skip</p>
-          <p>F: Fullscreen</p>
-          <p>M: Mute</p>
-          <p>↑/↓: Volume</p>
-          <p>0-9: Jump to %</p>
-        </div>
-      </div>
     </div>
   );
 } 

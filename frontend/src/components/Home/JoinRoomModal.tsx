@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 interface JoinRoomModalProps {
   isOpen: boolean;
@@ -7,6 +9,15 @@ interface JoinRoomModalProps {
 }
 
 const JoinRoomModal = ({ isOpen, onClose }: JoinRoomModalProps) => {
+  const [roomCode, setRoomCode] = useState('');
+  const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
+
+  const handleJoinRoom = () => {
+    localStorage.setItem('userName', userName);
+    navigate(`/room/${roomCode}`);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -41,6 +52,8 @@ const JoinRoomModal = ({ isOpen, onClose }: JoinRoomModalProps) => {
                     type="text"
                     placeholder="Your Name"
                     className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
                   />
                 </div>
                 <div>
@@ -48,12 +61,15 @@ const JoinRoomModal = ({ isOpen, onClose }: JoinRoomModalProps) => {
                     type="text"
                     placeholder="Room Code"
                     className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value)}
                   />
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full py-3 bg-purple-500 hover:bg-purple-600 rounded-lg font-semibold"
+                  onClick={handleJoinRoom}
                 >
                   Join Room
                 </motion.button>
