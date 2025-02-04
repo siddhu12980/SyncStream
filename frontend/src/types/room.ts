@@ -16,6 +16,7 @@ export interface Room {
   created_at: string;
   updated_at: string;
   video_keys: string[];
+  video_key: string | null;
 }
 
 export interface Video {

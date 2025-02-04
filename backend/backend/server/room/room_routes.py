@@ -24,7 +24,7 @@ async def create_room(
     request: Request,
     room_data: CreateRoom,
     room_service: RoomService = Depends(get_room_service)
-):
+) -> RoomResponse:
     """Create a new room."""
     try:
         user = request.state.user
@@ -40,7 +40,7 @@ async def create_room(
 async def get_all_rooms(
     request: Request,
     room_service: RoomService = Depends(get_room_service)
-):
+) -> List[RoomResponse]:
     """Get all rooms for the current user."""
     user = request.state.user
     rooms = await room_service.get_all_rooms(user.id)
@@ -51,7 +51,7 @@ async def get_room(
     request: Request,
     room_id: str,
     room_service: RoomService = Depends(get_room_service)
-):
+) -> RoomResponse:
     """Get a specific room by ID."""
     user = request.state.user
     room = await room_service.get_room(room_id)
@@ -73,7 +73,7 @@ async def update_room(
     room_id: str,
     room_data: CreateRoom,
     room_service: RoomService = Depends(get_room_service)
-):
+) -> RoomResponse:
     user = request.state.user
     updated_room = await room_service.update_room(room_id, room_data, user.id)
     if not updated_room:
@@ -108,10 +108,7 @@ async def add_video_to_room(
 ):
     """Add a video to a room."""
     
-    print("--------------------------------")
-    print(data)
-    print("--------------------------------")
-    
+
     user = request.state.user
     updated_room = await room_service.add_video_to_room(room_id, data, user.id)
     

@@ -10,3 +10,7 @@ node_modules
 **/node_modules
 **/worker/videos
 **/backend/videos
+**/frontend/videos
+**frontend/node_modules
+**backend/node_modules
+**worker/videos

@@ -4,10 +4,16 @@ from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
 from sqlmodel import select
+from botocore.exceptions import ClientError
+import boto3
 # from worker.tasks import process_video
 
 class VideoService:
     
+    def __init__(self):
+        self.s3_client = boto3.client('s3')
+        self.bucket_name = 'sidd-bucket-fast-api'
+
     async def create_video_task(self,video:VideoTaskCreateModel, session: AsyncSession,id:str, key:str):
         print("Creating video task...", video)
         
@@ -87,23 +93,101 @@ class VideoService:
                     status_code=404,
                     detail="Video task not found"
                 )
-                
+            
             if task.created_by != user_id:
                 raise HTTPException(
                     status_code=403,
                     detail="Not authorized to delete this task"
                 )
+
+            # Check if original video object exists in S3
+            try:
+                self.s3_client.head_object(Bucket=self.bucket_name, Key=task.video_url)
+                # Object exists, delete it
+                self.s3_client.delete_object(Bucket=self.bucket_name, Key=task.video_url)
+                
+                # Check if folder is empty after deletion
+                processed_folder = f"{task.video_url.rsplit('/', 1)[0]}/"  # Get the folder path
+                
+                response = self.s3_client.list_objects_v2(
+                    Bucket=self.bucket_name,
+                    Prefix=processed_folder
+                )
+                
+                print("--------------------------------")
+                print("before deleting folder", response)
+                print("--------------------------------")
+                
+                # If folder exists but is empty (only contains the folder object itself)
+                if 'Contents' not in response or len(response['Contents']) <= 1:
+                    self.s3_client.delete_object(
+                        Bucket=self.bucket_name,
+                        Key=processed_folder
+                    )
+          
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    # Object doesn't exist in S3, just continue
+                    pass
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error checking/deleting S3 object: {str(e)}"
+                    )
             
+            # Check and delete processed videos folder
+            try:
+                processed_folder = f"{task_id}/"
+                
+                response = self.s3_client.list_objects_v2(
+                    Bucket=self.bucket_name,
+                    Prefix=processed_folder
+                )
+                
+                
+                print("--------------------------------")
+                print(response)
+                print("--------------------------------")
+                
+                # If folder exists, delete all objects including the folder prefix
+                if 'Contents' in response:
+                    objects_to_delete = [{'Key': obj['Key']} for obj in response['Contents']]
+                    # Add the folder prefix if it exists as an object
+                    objects_to_delete.append({'Key': processed_folder})
+                    
+                    print("--------------------------------")
+                    print(objects_to_delete)
+                    print("--------------------------------")
+                    
+                    
+                    if objects_to_delete:
+                        self.s3_client.delete_objects(
+                            Bucket=self.bucket_name,
+                            Delete={'Objects': objects_to_delete}
+                        )
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    # Folder doesn't exist, just continue
+                    print("--------------------------------")
+                    print("Folder doesn't exist, just continue")
+                    print("--------------------------------")
+                    pass
+                else:
+                    # Only raise HTTP exception for other types of errors
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error deleting processed videos folder: {str(e)}"
+                    )
+            
+            # Delete from database
             session.delete(task)
             session.commit()
             
-            return {"message": "Video task deleted successfully" , "task_id":task.id}
+            return {"message": "Video task and associated files deleted successfully", "task_id": task.id}
             
-        except HTTPException as he:
-            await session.rollback()
-            raise he
         except Exception as e:
-            await session.rollback()
+            session.rollback()
+            
             raise HTTPException(
                 status_code=500,
                 detail=f"Error deleting video task: {str(e)}"

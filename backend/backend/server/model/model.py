@@ -102,7 +102,6 @@ class RoomResponse(SQLModel):
     created_at: str
     updated_at: str
     video_key: Optional[str]   
-    
 
     
 class AddVideoToRoom(SQLModel):

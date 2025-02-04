@@ -2,3 +2,39 @@
 
 
 /* ... */
+
+/* Import in your _app.tsx or main layout file */
+
+.video-js {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+  }
+  
+  .video-js .vjs-big-play-button {
+    background-color: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    border: 2px solid white;
+    width: 3em;
+    height: 3em;
+    line-height: 3em;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  
+  .video-js:hover .vjs-big-play-button {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+  
+  .video-js .vjs-control-bar {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .video-js .vjs-slider {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .video-js .vjs-play-progress {
+    background-color: #3b82f6;
+  }

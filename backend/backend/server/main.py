@@ -1,4 +1,4 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI,HTTPException, WebSocket, WebSocketDisconnect, Query
 
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -22,6 +22,7 @@ import json
 
 import logging
 from backend.worker.tasks import process_video
+from .room.ws import handle_websocket
 
 
 class MyFastAPI(FastAPI):
@@ -76,7 +77,7 @@ async def auth_middleware(request: Request, call_next: Callable):
         return await call_next(request)
         
     # Skip auth for login and signup routes
-    if request.url.path in ["/auth/login", "/auth/signup"]:
+    if request.url.path in ["/auth/login", "/auth/signup" ,"/docs", "/openapi.json", "/favicon.ico" , "/s3"]:
         return await call_next(request)
 
     try:
@@ -210,10 +211,19 @@ async def read_s3(request: Request, session: AsyncSession = Depends(get_session)
         raise HTTPException(status_code=500, detail=f"Error processing S3 event: {str(e)}")
 
 
+
 app.include_router(user_router,  prefix="/user", tags=["user"])
 app.include_router(auth_router,prefix="/auth",tags=["auth"])
 app.include_router(video_router,prefix="/video",tags=["video"])
 app.include_router(room_router,prefix="/room",tags=["room"])
+
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(
+    websocket: WebSocket, 
+    room_id: str, 
+    user_id: str = Query(...)  # ... means required parameter
+):
+    await handle_websocket(websocket, room_id, user_id)
 
 if __name__ == "__main__":
     import uvicorn

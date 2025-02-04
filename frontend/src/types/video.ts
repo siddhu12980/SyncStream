@@ -1,5 +1,7 @@
 export enum ProcessingStatus {
   CREATED = 'created',
+  VERIFIED = 'verified',
+  PENDING = 'pending',
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed'
@@ -12,6 +14,8 @@ export interface Video {
   status: ProcessingStatus;
   created_at: string;
   created_by: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface VideoTask {
@@ -20,6 +24,7 @@ export interface VideoTask {
   status: ProcessingStatus;
   created_by: string;
   created_at: string;
+  updated_at: string;
   title: string;
 }
 
