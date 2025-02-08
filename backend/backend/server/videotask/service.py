@@ -137,43 +137,37 @@ class VideoService:
             
             # Check and delete processed videos folder
             try:
-                processed_folder = f"{task_id}/"
+                # Define the root folder for processed videos
+                processed_folder = f"videos/{task_id}/"
                 
-                response = self.s3_client.list_objects_v2(
-                    Bucket=self.bucket_name,
-                    Prefix=processed_folder
-                )
+                # List all objects with this prefix (recursive)
+                paginator = self.s3_client.get_paginator('list_objects_v2')
                 
                 
-                print("--------------------------------")
-                print(response)
-                print("--------------------------------")
+                print("Paginator Response",paginator)
                 
-                # If folder exists, delete all objects including the folder prefix
-                if 'Contents' in response:
-                    objects_to_delete = [{'Key': obj['Key']} for obj in response['Contents']]
-                    # Add the folder prefix if it exists as an object
-                    objects_to_delete.append({'Key': processed_folder})
-                    
-                    print("--------------------------------")
-                    print(objects_to_delete)
-                    print("--------------------------------")
-                    
-                    
-                    if objects_to_delete:
+                objects_to_delete = []
+                
+                # Paginate through all objects in case there are more than 1000
+                for page in paginator.paginate(Bucket=self.bucket_name, Prefix=processed_folder):
+                    if 'Contents' in page:
+                        # Collect all objects in this folder and its subfolders
+                        objects_to_delete.extend([{'Key': obj['Key']} for obj in page['Contents']])
+                
+                if objects_to_delete:
+                    # S3 delete_objects can only handle 1000 objects at a time
+                    for i in range(0, len(objects_to_delete), 1000):
+                        batch = objects_to_delete[i:i + 1000]
                         self.s3_client.delete_objects(
                             Bucket=self.bucket_name,
-                            Delete={'Objects': objects_to_delete}
+                            Delete={'Objects': batch}
                         )
+                        
             except ClientError as e:
                 if e.response['Error']['Code'] == '404':
                     # Folder doesn't exist, just continue
-                    print("--------------------------------")
-                    print("Folder doesn't exist, just continue")
-                    print("--------------------------------")
                     pass
                 else:
-                    # Only raise HTTP exception for other types of errors
                     raise HTTPException(
                         status_code=500,
                         detail=f"Error deleting processed videos folder: {str(e)}"

@@ -59,6 +59,7 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, nam
                             "timestamp": current_time
                         })
                         continue
+                    
                     await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
                 
 

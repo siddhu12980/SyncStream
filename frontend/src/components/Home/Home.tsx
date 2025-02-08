@@ -8,6 +8,8 @@ import SignInModal from '../Auth/SignInModal';
 import SignUpModal from '../Auth/SignUpModal';
 import { toast } from 'sonner';
 import { SignInCredentials } from '../../types/auth';
+import { useNavigate } from 'react-router-dom';
+
 
 const Home = () => {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -16,6 +18,7 @@ const Home = () => {
   const [signInCredentials, setSignInCredentials] = useState<SignInCredentials>();
   const auth = useRecoilValue(userState);
   const setUserState = useSetRecoilState(userState);
+  const navigate = useNavigate();
 
   const handleSwitchToSignUp = () => {
     setIsSignInModalOpen(false);
@@ -127,6 +130,18 @@ const Home = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (!auth.isAuthenticated) {
+                  toast.error('Please sign in to create a room', {
+                    action: {
+                      label: 'Sign In',
+                      onClick: () => setIsSignInModalOpen(true)
+                    }
+                  });
+                  return;
+                }
+                navigate('/dashboard/room');
+              }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold text-lg flex items-center gap-2"
             >
               Create Room <ArrowRightIcon className="w-5 h-5" />

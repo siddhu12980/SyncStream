@@ -2,17 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { roomService } from '../services/roomService';
 import { toast } from 'sonner';
 
-// Temporary mock data until backend is ready
-const mockRooms = [
-  {
-    id: '1',
-    name: 'Movie Night',
-    status: 'created',
-    videoIds: [],
-    createdBy: 'user1',
-    createdAt: new Date().toISOString()
-  }
-];
 
 export const useRooms = () => {
   return useQuery({

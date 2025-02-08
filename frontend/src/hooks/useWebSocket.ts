@@ -20,7 +20,6 @@ export interface VideoEvent {
 
 type Message = ChatMessage | VideoEvent;
 
-
 export const useWebSocket = (roomId: string, userName: string, userId: string) => {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -29,10 +28,16 @@ export const useWebSocket = (roomId: string, userName: string, userId: string) =
   const wsRef = useRef<WebSocket | null>(null);
   const videoEventCallbackRef = useRef<((event: VideoEvent) => void) | null>(null);
 
+  const retryCountRef = useRef(0);
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
-
     if (!userId || !userName) return { messages: [], isConnected: false, sendMessage: () => {} };
+    if (retryCountRef.current >= 3) {
+      console.log('Max retry attempts reached');
+      toast.error('Failed to connect to chat. Please try again later.');
+      return;
+    }
 
     const ws = new WebSocket(`ws://localhost:8000/ws/${roomId}?user_id=${userId}&name=${userName}`);
 
@@ -40,6 +45,7 @@ export const useWebSocket = (roomId: string, userName: string, userId: string) =
 
     ws.onopen = () => {
       setIsConnected(true);
+      retryCountRef.current = 0;
       toast.success('Connected to chat');
     };
 
@@ -61,6 +67,8 @@ export const useWebSocket = (roomId: string, userName: string, userId: string) =
     ws.onclose = () => {
       setIsConnected(false);
       // Attempt to reconnect after a delay
+      console.log('Reconnecting to chat');
+      retryCountRef.current += 1;
       setTimeout(connect, 3000);
     };
 

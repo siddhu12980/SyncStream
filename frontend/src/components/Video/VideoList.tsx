@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PlusIcon, TrashIcon, VideoCameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useRecoilValue } from 'recoil';
 import { userState } from '../../store/userStore';
@@ -7,8 +7,7 @@ import { useVideoUpload, useVideos } from '../../hooks/useVideo';
 import VideoSkeleton from './VideoSkeleton';
 import { ProcessingStatus } from '../../types/video';
 import { toast } from 'sonner';
-
-
+import { useBlocker } from 'react-router-dom';
 
 import axios1 from '../../config/axios';
 import axios,{isAxiosError} from 'axios';
@@ -37,7 +36,8 @@ const VideoList = () => {
   const auth = useRecoilValue(userState);
   const { uploadVideo, isUploading } = useVideoUpload();
   const [videoToDelete, setVideoToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,9 +60,21 @@ const VideoList = () => {
         title: newVideoTitle
       });
 
+      
+
+
       // Get presigned URL and video ID
       const { data: presignedData } = await axios1.post('/video', { title: newVideoTitle });
       const { id, url, fields } = presignedData;
+
+      // Store the upload details in localStorage
+      localStorage.setItem(`upload_${id}`, JSON.stringify({
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        title: newVideoTitle,
+        progress: 0
+      }));
+
 
       // Use the browser's FormData
       const formData = new FormData();
@@ -87,6 +99,7 @@ const VideoList = () => {
 
       //close the model
       setIsUploadModalOpen(false);
+
       const response = await cleanAxios.post(url, formData, {
         maxBodyLength: Infinity,
         headers: {
@@ -100,6 +113,12 @@ const VideoList = () => {
           setUploadProgress(prev => ({ ...prev, [id]: progress }));
         },
       });
+
+      //on 100% progress, remove the upload from localStorage
+      setUploadProgress(prev => ({ ...prev, [id]: 100 }));
+      setTimeout(() => {
+        localStorage.removeItem(`upload_${id}`);
+      }, 1000);
 
 
       console.log("response ");
@@ -141,7 +160,7 @@ const VideoList = () => {
   const handleDeleteVideo = async (videoId: string, videoTitle: string) => {
     const toastId = toast.loading(`Deleting video: ${videoTitle}...`);
     try {
-      await axios.delete(`/video/${videoId}`);
+      await axios1.delete(`/video/${videoId}`);
       toast.success(`Successfully deleted: ${videoTitle}`, {
         id: toastId
       });

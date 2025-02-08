@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, data } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { VideoPlayer } from './VideoPlayer';
 import axios1 from '../../config/axios';
@@ -7,7 +7,7 @@ import { ChatBox } from './ChatBox';
 import { userState } from '../../store/userStore';
 import { useRecoilValue } from 'recoil';
 import { useEffect, useState } from 'react';
-import { useWebSocket, VideoEvent } from '../../hooks/useWebSocket';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 interface Room {
   id: string;
@@ -93,9 +93,9 @@ export default function RoomPage() {
     return null;
   }
 
-  const url = 'https://sidd-bucket-fast-api.s3.ap-south-1.amazonaws.com/videos/80f667e4-78d0-48bf-a3c7-377ab33480f8/master.m3u8'
 
-
+  const url =`https://sidd-bucket-fast-api.s3.ap-south-1.amazonaws.com/videos/${room.video_key}/master.m3u8`
+  
   return (
     <div className="min-h-screen bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto">
