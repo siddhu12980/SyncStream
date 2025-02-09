@@ -1,21 +1,26 @@
-import { useEffect, useRef } from 'react';
-import Hls from 'hls.js';
+import { useEffect, useRef } from "react";
+import Hls from "hls.js";
 
 interface VideoPlayerProps {
   videoUrl: string;
-  
-  onVideoEvent: (event: {
-    type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+  isAdmin?: boolean;
+  onVideoEvent?: (event: {
+    type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
     video_time: number;
   }) => void;
 
   remoteVideoEvent?: {
-    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
     video_time: number;
-  };
+  } | null;
 }
 
-export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoPlayerProps) {
+export function VideoPlayer({
+  videoUrl,
+  isAdmin = false,
+  onVideoEvent,
+  remoteVideoEvent,
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -23,12 +28,11 @@ export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoP
     if (!videoRef.current) return;
 
     const video = videoRef.current;
-    console.log('Initializing HLS player with URL:', videoUrl);
+    console.log("Initializing HLS player with URL:", videoUrl);
 
     if (Hls.isSupported()) {
-
       const hls = new Hls({
-        debug: true, 
+        debug: true,
         enableWorker: true,
       });
 
@@ -39,37 +43,37 @@ export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoP
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest loaded, starting playback');
-        video.play().catch(error => {
-          console.log('Playback failed:', error);
+        console.log("HLS manifest loaded, starting playback");
+        video.play().catch((error) => {
+          console.log("Playback failed:", error);
         });
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
+        console.error("HLS error:", data);
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('Network error, attempting to recover');
+              console.log("Network error, attempting to recover");
               hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('Media error, attempting to recover');
+              console.log("Media error, attempting to recover");
               hls.recoverMediaError();
               break;
             default:
-              console.error('Fatal error, stopping playback');
+              console.error("Fatal error, stopping playback");
               hls.destroy();
               break;
           }
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       // For Safari, which has native HLS support
       video.src = videoUrl;
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(error => {
-          console.log('Playback failed:', error);
+      video.addEventListener("loadedmetadata", () => {
+        video.play().catch((error) => {
+          console.log("Playback failed:", error);
         });
       });
     }
@@ -77,128 +81,109 @@ export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoP
     // Cleanup
     return () => {
       if (hlsRef.current) {
-        console.log('Destroying HLS instance');
+        console.log("Destroying HLS instance");
         hlsRef.current.destroy();
       }
     };
   }, [videoUrl]);
 
-  // Add video event listeners
+  // Add video event listeners only for admin
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !isAdmin || !onVideoEvent) return;
 
     const handlePlay = () => {
-      onVideoEvent({ type: 'play', video_time: video.currentTime });
+      onVideoEvent({ type: "play", video_time: video.currentTime });
     };
 
     const handlePause = () => {
-      onVideoEvent({ type: 'pause', video_time: video.currentTime });
+      onVideoEvent({ type: "pause", video_time: video.currentTime });
     };
 
     const handleSeek = () => {
-      onVideoEvent({ type: 'video_time', video_time: video.currentTime });
+      onVideoEvent({ type: "video_time", video_time: video.currentTime });
     };
 
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('seeked', handleSeek);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("seeked", handleSeek);
 
     return () => {
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('seeked', handleSeek);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("seeked", handleSeek);
     };
-  }, [onVideoEvent]);
-
-  // Modify keyboard controls to emit events
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      switch (e.key.toLowerCase()) {
-        case ' ':
-        case 'k':
-          e.preventDefault();
-          if (video.paused) {
-            video.play();
-            onVideoEvent({ type: 'play', video_time: video.currentTime });
-          } else {
-            video.pause();
-            onVideoEvent({ type: 'pause', video_time: video.currentTime });
-          }
-          break;
-        
-        case 'arrowleft':
-          e.preventDefault();
-          video.currentTime = Math.max(video.currentTime - 10, 0);
-          onVideoEvent({ type: 'back_10', video_time: video.currentTime });
-          break;
-        
-        case 'arrowright':
-          e.preventDefault();
-          video.currentTime = Math.min(video.currentTime + 10, video.duration);
-          onVideoEvent({ type: 'forward_10', video_time: video.currentTime });
-          break;
-        
-        case 'j':  // Rewind 5 seconds
-          video.currentTime = Math.max(video.currentTime - 5, 0);
-          break;
-        
-        case 'l':  // Forward 5 seconds
-          video.currentTime = Math.min(video.currentTime + 5, video.duration);
-          break;
-        
-        case 'f':  // Toggle fullscreen
-          e.preventDefault();
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          } else {
-            video.requestFullscreen();
-          }
-          break;
-        
-        case 'm':  // Toggle mute
-          video.muted = !video.muted;
-          break;
-          
-        case 'arrowup':  // Volume up
-          e.preventDefault();
-          video.volume = Math.min(video.volume + 0.1, 1);
-          break;
-          
-        case 'arrowdown':  // Volume down
-          e.preventDefault();
-          video.volume = Math.max(video.volume - 0.1, 0);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [onVideoEvent]);
+  }, [onVideoEvent, isAdmin]);
 
   // Handle incoming remote video events
   useEffect(() => {
     if (!remoteVideoEvent || !videoRef.current) return;
-    console.log('Remote video event:', remoteVideoEvent);
-    
+    if (isAdmin) return;
+
+    //if user is not admin then handle the remote video event THIS IS ONLY FOR NON ADMIN USER
+    console.log("Remote video event:", remoteVideoEvent);
+
     const video = videoRef.current;
-    
+
     switch (remoteVideoEvent.event_type) {
-      case 'play':
-        video.currentTime = remoteVideoEvent.video_time;
+      case "play":
+        const diff1 = Math.abs(video.currentTime - remoteVideoEvent.video_time);
+
+        if (diff1 > 1) {
+          video.currentTime = remoteVideoEvent.video_time;
+        }
         video.play();
         break;
-      case 'pause':
-        video.currentTime = remoteVideoEvent.video_time;
+
+      case "pause":
+        const diff2 = Math.abs(video.currentTime - remoteVideoEvent.video_time);
+
+        if (diff2 > 1) {
+          video.currentTime = remoteVideoEvent.video_time;
+        }
         video.pause();
+
         break;
-      case 'video_time':
-      case 'forward_10':
-      case 'back_10':
-        video.currentTime = remoteVideoEvent.video_time;
+
+      case "video_time":
+        const diff3 = Math.abs(video.currentTime - remoteVideoEvent.video_time);
+
+        if (diff3 > 1) {
+          video.currentTime = remoteVideoEvent.video_time;
+        }
+
+        video.play();
+
+        break;
+
+      case "forward_10":
+        const diff4 = Math.abs(video.currentTime - remoteVideoEvent.video_time);
+
+        if (diff4 > 1) {
+          video.currentTime = remoteVideoEvent.video_time;
+        }
+
+        video.currentTime += 10;
+
+        video.play();
+
+        break;
+
+      case "back_10":
+        const diff5 = Math.abs(video.currentTime - remoteVideoEvent.video_time);
+
+        if (diff5 > 1) {
+          video.currentTime = remoteVideoEvent.video_time;
+        }
+
+        video.currentTime -= 10;
+
+        video.play();
+
+        break;
+
+      default:
+        console.log("Unknown event type:", remoteVideoEvent);
         break;
     }
   }, [remoteVideoEvent]);
@@ -212,8 +197,7 @@ export function VideoPlayer({ videoUrl, onVideoEvent, remoteVideoEvent }: VideoP
         playsInline
         autoPlay={false}
         muted={true}
-
       />
     </div>
   );
-} 
+}

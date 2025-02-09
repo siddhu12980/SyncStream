@@ -5,8 +5,8 @@ import App from './App.tsx'
 import { Toaster } from 'sonner'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+  <>
     <Toaster position="bottom-right" richColors />
     <App />
-  </StrictMode>,
+  </>
 )

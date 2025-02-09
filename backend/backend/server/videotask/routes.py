@@ -36,7 +36,7 @@ async def create_video_task(req: Request , video:VideoTaskCreateModel ,session:A
             detail="Title is required" )
         
         
-    id = str(req.state.user.id)+"/"+str(uuid.uuid4())[0:5]+"_" + video.title
+    id = f"{req.state.user.id}/{str(uuid.uuid4())[0:5]}_{video.title}"
     
     print("Object Name : ",id)
     

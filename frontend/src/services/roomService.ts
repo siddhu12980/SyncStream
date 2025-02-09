@@ -22,8 +22,18 @@ export const roomService = {
     return response.data;
   },
 
+  validateYoutubeUrl: async (url: string) => {
+    const response = await axiosInstance.get(`/public/yt`, {
+      params: { url }
+    });
+    return response.data;
+  },
+
   addVideoToRoom: async (roomId: string, data: AddVideoToRoomRequest) => {
-    const response = await axiosInstance.post<Room>(`/room/add-video/${roomId}`, data);
+    const response = await axiosInstance.post<Room>(`/room/add-video/${roomId}`, {
+      video_key: data.video_key,
+      video_type: data.video_type
+    });
     return response.data;
   },
 

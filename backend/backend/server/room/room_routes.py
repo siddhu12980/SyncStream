@@ -7,7 +7,6 @@ from backend.server.model.model import (
     CreateRoom,
     RoomResponse,
     AddVideoToRoom,
-    RemoveVideoFromRoom,
 )
 from backend.server.room.room_service import RoomService
 
@@ -44,6 +43,11 @@ async def get_all_rooms(
     """Get all rooms for the current user."""
     user = request.state.user
     rooms = await room_service.get_all_rooms(user.id)
+    
+    print("--------------------------------")
+    print(rooms)
+    print("--------------------------------")
+    
     return [room_service._to_response(room) for room in rooms]
 
 @router.get("/{room_id}", response_model=RoomResponse)

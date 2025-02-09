@@ -7,7 +7,6 @@ from ..model.model import (
   CreateRoom,
   RoomResponse,
   AddVideoToRoom,
-  RemoveVideoFromRoom,
 )
 
 class RoomService:
@@ -36,6 +35,7 @@ class RoomService:
         """Get all rooms for a user."""
         statement = select(Room).where(Room.created_by == user_id)
         result = self.session.exec(statement)
+        
         return result.all()
 
     async def update_room(self, room_id: str, room_data: CreateRoom, user_id: str) -> Optional[Room]:
@@ -101,6 +101,7 @@ class RoomService:
         return RoomResponse(
             id=room.id,
             name=room.name,
+            status=room.status,
             description=room.description,
             created_by=room.created_by,
             created_at=room.created_at,

@@ -20,24 +20,34 @@ export interface VideoEvent {
 
 type Message = ChatMessage | VideoEvent;
 
-export const useWebSocket = (roomId: string, userName: string, userId: string) => {
+export const useWebSocket = (roomId: string, userName: string, userId: string, isAdmin: boolean) => {
+
+
+  console.log("isAdmin",isAdmin)
+  
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-
   const wsRef = useRef<WebSocket | null>(null);
   const videoEventCallbackRef = useRef<((event: VideoEvent) => void) | null>(null);
 
   const retryCountRef = useRef(0);
 
+  const intentionalDisconnectRef = useRef(false);
+
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
     if (!userId || !userName) return { messages: [], isConnected: false, sendMessage: () => {} };
+    
+    if (intentionalDisconnectRef.current) return;
+    
     if (retryCountRef.current >= 3) {
       console.log('Max retry attempts reached');
       toast.error('Failed to connect to chat. Please try again later.');
       return;
     }
+
 
     const ws = new WebSocket(`ws://localhost:8000/ws/${roomId}?user_id=${userId}&name=${userName}`);
 
@@ -66,10 +76,12 @@ export const useWebSocket = (roomId: string, userName: string, userId: string) =
 
     ws.onclose = () => {
       setIsConnected(false);
-      // Attempt to reconnect after a delay
-      console.log('Reconnecting to chat');
-      retryCountRef.current += 1;
-      setTimeout(connect, 3000);
+      if (!intentionalDisconnectRef.current) {
+        console.log('Reconnecting to chat');
+        retryCountRef.current += 1;
+        toast.error('Disconnected from the room reconnecting...');
+        setTimeout(connect, 3000);
+      }
     };
 
     ws.onerror = (error) => {
@@ -79,16 +91,22 @@ export const useWebSocket = (roomId: string, userName: string, userId: string) =
 
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
+        intentionalDisconnectRef.current = true;
+
         ws.close();
+
+        toast.success('Disconnected from the room');
       }
     };
-  }, [roomId]);
+  }, [roomId, userId, userName]);
 
   useEffect(() => {
     connect();
     return () => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        intentionalDisconnectRef.current = true;
         wsRef.current.close();
+        toast.success('Disconnected from the room');
       }
     };
   }, [connect]);

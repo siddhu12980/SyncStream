@@ -97,6 +97,7 @@ class CreateRoom(SQLModel):
 class RoomResponse(SQLModel):
     id: str
     name: str
+    status: RoomStatus 
     description: str
     created_by: str
     created_at: str

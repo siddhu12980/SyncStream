@@ -7,10 +7,22 @@ export enum RoomStatus {
   DELETED = 'deleted'
 }
 
+// class VideoType(str, Enum):
+//     youtube="youtube"
+//     default="default"
+//     other="other"
+
+export enum VideoType {
+  YOUTUBE = 'youtube',
+  DEFAULT = 'default',
+  OTHER = 'other'
+}
+
 export interface Room {
   id: string;
   name: string;
   description: string;
+  video_type: VideoType;
   status: RoomStatus;
   created_by: string;
   created_at: string;
@@ -39,4 +51,5 @@ export interface UploadVideoRequest {
 
 export interface AddVideoToRoomRequest {
   video_key: string;
+  video_type: VideoType;
 } 
