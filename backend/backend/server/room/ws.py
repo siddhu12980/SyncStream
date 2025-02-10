@@ -1,38 +1,40 @@
 from backend.server.room.ws_manager import ConnectionManager
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import Dict, Set
 from datetime import datetime
-import json
+from sqlalchemy.orm import Session
+from backend.server.model.model import Room
+from backend.server.db.db import engine
 
 manager = ConnectionManager()
 
+
 async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, name: str):
     try:
-        # First connect the websocket
-        await manager.connect(websocket, room_id, user_id, name)
-        print(f"User {user_id} connected to room {room_id}")
-        print(f"Room {room_id} has {len(manager.active_rooms[room_id])} users")
+        print(f"Attempting to connect user {user_id} to room {room_id} with name {name}")
         
-        # Main message handling loop
-        while True:
-            try:
+        connection_result = await manager.connect(websocket, room_id, user_id, name)
+        if not connection_result:
+            print(f"Connection failed - manager.connect returned {connection_result}")
+            print(f"Current active connections: {manager.active_rooms}")
+            print(f"Current rooms: {manager.room_owners}")
+            return
+            
+        print(f"Successfully connected user {user_id} to room {room_id}")
+        
+        try:
+            while True:
                 data = await websocket.receive_json()
-                print(f"Received data from {user_id} in room {room_id}: {data}")
+                print(f"Received data from {user_id}: {data}")
                 
-                # Validate the event type
                 if "type" not in data:
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Missing event type",
-                        "timestamp": datetime.now().isoformat()
+                        "message": "Missing event type"
                     })
                     continue
 
-                # Add timestamp to all events
-                current_time = datetime.now().isoformat()
-                
-                # Handle different event types
                 event_type = data["type"]
+                current_time = datetime.now().isoformat()
                 message = {
                     "type": event_type,
                     "user_id": user_id,
@@ -45,52 +47,40 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, nam
                     if "message" not in data:
                         await websocket.send_json({
                             "type": "error",
-                            "message": "Missing chat message",
-                            "timestamp": current_time
+                            "message": "Missing chat message"
                         })
                         continue
                     await manager.broadcast_to_room(room_id, message)
                 
-                elif event_type in ["video_event"]:
+                elif event_type == "video_event":
+                    if not manager.is_room_owner(room_id, user_id):
+                        print(f"Non-owner {user_id} tried to control video")
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Only room owner can control video"
+                        })
+                        continue
+                        
                     if "video_time" not in data:
                         await websocket.send_json({
                             "type": "error",
-                            "message": "Missing video timestamp",
-                            "timestamp": current_time
+                            "message": "Missing video time"
                         })
                         continue
-                    
+                        
                     await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
                 
-
                 else:
                     await websocket.send_json({
                         "type": "error",
-                        "message": f"Unknown event type: {event_type}",
-                        "timestamp": current_time
+                        "message": f"Unknown event type: {event_type}"
                     })
 
-            except json.JSONDecodeError:
-                await websocket.send_json({
-                    "type": "error",
-                    "message": "Invalid JSON format",
-                    "timestamp": datetime.now().isoformat()
-                })
-                continue
-
-    except WebSocketDisconnect:
-        # Handle normal disconnection
-        print(f"User {user_id} disconnected from room {room_id}")
-        await manager.disconnect(room_id, user_id)
-    
+        except WebSocketDisconnect:
+            await manager.disconnect(room_id, user_id)
+            
     except Exception as e:
-        # Handle unexpected errors
         print(f"Error in websocket handler: {str(e)}")
-        if room_id in manager.active_rooms and user_id in manager.active_rooms[room_id]:
-            await manager.disconnect(room_id, user_id)
-    
-    finally:
-        # Ensure cleanup happens
-        if room_id in manager.active_rooms and user_id in manager.active_rooms[room_id]:
-            await manager.disconnect(room_id, user_id)
-        print(f"WebSocket connection closed for user {user_id} in room {room_id}")
+        await manager.disconnect(room_id, user_id)
+        raise
+

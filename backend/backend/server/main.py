@@ -20,7 +20,7 @@ from backend.server.room.room_routes import router as room_router
 from typing import Callable
 from backend.server.public.public_routes import public_router
 import json
-
+from backend.server.yt import handle_request
 import logging
 from backend.worker.tasks import process_video
 from .room.ws import handle_websocket
@@ -84,7 +84,8 @@ async def auth_middleware(request: Request, call_next: Callable):
         "/favicon.ico",
         "/s3",
         "/ws",
-        "/public/room"  # Add the public room route
+        "/public/room",
+        "/public/yt"
     ] or request.url.path.startswith("/public/room/"):  # Allow room ID lookups
         return await call_next(request)
 
@@ -217,6 +218,15 @@ async def read_s3(request: Request, session: AsyncSession = Depends(get_session)
     except Exception as e:
         print(f"Error processing S3 event: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing S3 event: {str(e)}")
+
+@app.get("/public/yt")
+async def get_yt_details(url:str):
+    data =  handle_request(url)
+    if data:
+        return data
+    else:
+        raise HTTPException(status_code=404, detail="Video not found")
+
 
 
 

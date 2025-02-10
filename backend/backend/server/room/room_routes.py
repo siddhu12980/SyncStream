@@ -42,6 +42,13 @@ async def get_all_rooms(
 ) -> List[RoomResponse]:
     """Get all rooms for the current user."""
     user = request.state.user
+    
+    if (user is None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized"
+        )
+    
     rooms = await room_service.get_all_rooms(user.id)
     
     print("--------------------------------")

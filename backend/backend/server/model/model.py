@@ -76,6 +76,12 @@ class TaskResponseModel(BaseModel):
     fields: Dict[str, Any]
     url: str
     data: Dict[str, Any]
+    
+class VideoType(str, Enum):
+    youtube="youtube"
+    default="default"
+    other="other"
+
 
 class RoomBase(SQLModel):
     name: str
@@ -85,6 +91,7 @@ class RoomBase(SQLModel):
     created_at: str = Field(default_factory=lambda: datetime.now())
     updated_at: str = Field(default_factory=lambda: datetime.now())
     video_key: Optional[str] = Field(default=None)
+    video_type: VideoType = Field(default=VideoType.default)
     
 class Room(RoomBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
@@ -97,6 +104,7 @@ class CreateRoom(SQLModel):
 class RoomResponse(SQLModel):
     id: str
     name: str
+    video_type: VideoType
     status: RoomStatus 
     description: str
     created_by: str
@@ -107,6 +115,7 @@ class RoomResponse(SQLModel):
     
 class AddVideoToRoom(SQLModel):
     video_key: str
+    video_type: VideoType = Field(default=VideoType.default)
     
 class RemoveVideoFromRoom(SQLModel):
     video_key: str

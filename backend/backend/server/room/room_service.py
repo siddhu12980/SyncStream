@@ -7,6 +7,7 @@ from ..model.model import (
   CreateRoom,
   RoomResponse,
   AddVideoToRoom,
+  VideoType
 )
 
 class RoomService:
@@ -69,6 +70,12 @@ class RoomService:
             return None
         
         room.video_key = data.video_key
+        
+        if (data.video_type == VideoType.youtube):
+            room.video_type = VideoType.youtube
+        else:
+            room.video_type = VideoType.default
+        
                 
         print("--------------------------------")
         print(room.video_key)
