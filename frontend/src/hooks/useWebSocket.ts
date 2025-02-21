@@ -146,6 +146,7 @@ export const useWebSocket = (roomId: string, userName: string, userId: string, i
 
   const onVideoEvent = useCallback((callback: (event: VideoEvent) => void) => {
     videoEventCallbackRef.current = callback;
+    
   }, []);
 
   return {

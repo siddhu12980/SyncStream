@@ -27,12 +27,19 @@ dependencies = [
     "requests (>=2.32.3,<3.0.0)",
 ]
 
+[tool.poe.tasks]
+backend = {cmd = "uvicorn backend.server.main:app --reload"}
+worker = {cmd = "celery -A backend.worker.tasks worker --loglevel=INFO"}
+
 [tool.poetry]
 packages = [
     {include = "backend"}
 ]
 
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.32.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+

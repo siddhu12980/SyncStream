@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef } from "react";
 import Hls from "hls.js";
 
 interface VideoPlayerProps {
@@ -13,20 +13,20 @@ interface VideoPlayerProps {
     event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
     video_time: number;
   } | null;
-}
+} 
 
-export function VideoPlayer({
+export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
   videoUrl,
   isAdmin = false,
   onVideoEvent,
   remoteVideoEvent,
-}: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+}, forwardedRef) => {
+  const localRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = (forwardedRef || localRef) as React.MutableRefObject<HTMLVideoElement | null>;
   const hlsRef = useRef<Hls | null>(null);
 
   useEffect(() => {
     if (!videoRef.current) return;
-
     const video = videoRef.current;
     console.log("Initializing HLS player with URL:", videoUrl);
 
@@ -200,4 +200,4 @@ export function VideoPlayer({
       />
     </div>
   );
-}
+});

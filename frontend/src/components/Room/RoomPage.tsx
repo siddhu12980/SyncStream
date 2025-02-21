@@ -9,6 +9,8 @@ import { useRecoilValue } from "recoil";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { toast } from "sonner";
+import { VideoType } from "../../types/room";
+import { YouTubePlayer } from "./YouTubePlayer";
 
 interface Room {
   id: string;
@@ -18,6 +20,7 @@ interface Room {
   created_at: string;
   updated_at: string;
   created_by: string;
+  video_type: VideoType;
 }
 
 export default function RoomPage() {
@@ -76,6 +79,8 @@ export default function RoomPage() {
     isAdmin = true;
   }
 
+
+  console.log("isAdmin", isAdmin);
   const { messages, isConnected, sendMessage, sendVideoEvent, onVideoEvent } =
     useWebSocket(id, user_name, user_id, isAdmin);
 
@@ -106,31 +111,28 @@ export default function RoomPage() {
     };
   }, []);
 
-
   useEffect(() => {
-
     if (!isChatOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
 
-
       if (lastMessage.type === "chat" && lastMessage.user_id !== user_id) {
-
         if (lastMessageRef.current < messages.length) {
           setUnreadCount(prev => prev + 1);
         }
-
       }
     }
     lastMessageRef.current = messages.length;
   }, [messages, isChatOpen, user_id]);
 
   useEffect(() => {
-    if (isAdmin) return;
-    onVideoEvent((event) => {
-      console.log("handelling Remote Video Event:", event);
-      setLastVideoEvent(event);
-    });
-  }, [onVideoEvent]);
+
+    if (!isAdmin) {
+      onVideoEvent((event) => {
+        console.log("Handling Remote Video Event:", event);
+        setLastVideoEvent(event);
+      });
+    }
+  }, [isAdmin, onVideoEvent]);
 
   if (isLoading) {
     return (
@@ -152,9 +154,18 @@ export default function RoomPage() {
     return null;
   }
 
+  const getVideoUrl = (room: Room) => {
+    if (!room.video_key) return null;
 
-
-  const url = `https://sidd-bucket-fast-api.s3.ap-south-1.amazonaws.com/videos/${room.video_key}/master.m3u8`;
+    switch (room.video_type) {
+      case VideoType.YOUTUBE:
+        return room.video_key;
+      case VideoType.DEFAULT:
+        return `https://sidd-bucket-fast-api.s3.ap-south-1.amazonaws.com/videos/${room.video_key}/master.m3u8`;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -176,12 +187,28 @@ export default function RoomPage() {
 
             <div className="bg-gray-800 rounded-lg overflow-hidden">
               {room.video_key && (
-                <VideoPlayer
-                  isAdmin={isAdmin}
-                  videoUrl={url}
-                  onVideoEvent={isAdmin ? sendVideoEvent : undefined}
-                  remoteVideoEvent={!isAdmin ? lastVideoEvent : undefined}
-                />
+                <>
+                  {room.video_type === VideoType.YOUTUBE ? (
+                    
+                    <YouTubePlayer
+                      videoUrl={room.video_key}
+                      isAdmin={isAdmin}
+                      onVideoEvent={isAdmin ? sendVideoEvent : undefined}
+                      remoteVideoEvent={!isAdmin ? lastVideoEvent : undefined}
+                    />
+                  ) : room.video_type === VideoType.DEFAULT ? (
+                    <VideoPlayer
+                      videoUrl={getVideoUrl(room)!}
+                      isAdmin={isAdmin}
+                      onVideoEvent={isAdmin ? sendVideoEvent : undefined}
+                      remoteVideoEvent={!isAdmin ? lastVideoEvent : undefined}
+                    />
+                  ) : (
+                    <div className="aspect-video bg-gray-900 flex items-center justify-center">
+                      <p className="text-gray-400">Unsupported video type</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

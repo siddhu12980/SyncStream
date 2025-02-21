@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useRooms, useCreateRoom, useDeleteRoom, useValidateYoutubeUrl, useAddVideoToRoom } from "../../hooks/useRoom";
+import { useRooms, useCreateRoom, useDeleteRoom, useAddVideoToRoom } from "../../hooks/useRoom";
 import { useState } from "react"
 
 import {
@@ -8,52 +8,52 @@ import {
   VideoCameraIcon,
   XMarkIcon,
   ArrowRightIcon,
+  PlayCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useRecoilValue } from "recoil";
 import { userState } from "../../store/userStore";
-import { useVideoUpload, useVideos } from "../../hooks/useVideo";
+import { useVideos } from "../../hooks/useVideo";
 import RoomSkeleton from "./RoomSkeleton";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios1 from "../../config/axios";
 import { formatDate } from "../../lib/util";
-import { Model } from "../lib/model";
 import { YouTubeModal } from "../lib/YouTubeModal";
+import { VideoType } from "../../types/room";
 
 
 interface YouTubeVideoInfo {
   title: string;
   url: string;
   thumb: string;
-  description: string;
   creator: string;
   creatorurl: string;
   views: number;
 }
 
+
+
 const RoomList = () => {
   const [newRoomName, setNewRoomName] = useState<string>("");
   const [newRoomDescription, setNewRoomDescription] = useState<string>("");
-  const { data: rooms, isLoading: isLoadingRooms, refetch } = useRooms();
+  const { data: rooms, isLoading: isLoadingRooms } = useRooms();
   const { data: videos } = useVideos();
   const createRoom = useCreateRoom();
   const deleteRoom = useDeleteRoom();
   const auth = useRecoilValue(userState);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState<boolean>(false);
   const [roomIdToJoin, setRoomIdToJoin] = useState<string>("");
   const [youtubeUrl, setYoutubeUrl] = useState<string>("");
   const [youtubeVideoInfo, setYoutubeVideoInfo] = useState<YouTubeVideoInfo | null>(null);
-  const [isValidatingYoutube, setIsValidatingYoutube] = useState(false);
+  
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
   const navigate = useNavigate()
-
-  const validateYoutube = useValidateYoutubeUrl();
   const addVideoToRoom = useAddVideoToRoom();
+
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,16 +76,6 @@ const RoomList = () => {
     }
   };
 
-  const handleYoutubeUrlValidate = async (url: string) => {
-    try {
-      const data = await validateYoutube.mutateAsync(url);
-      setYoutubeVideoInfo(data);
-    } catch (error) {
-      // Error handling is done in the mutation
-      toast.error("Failed to validate YouTube URL");
-    }
-  };
-
   const handleAttachVideo = async (roomId: string, videoKey: string, isYoutube = false) => {
     try {
       await addVideoToRoom.mutateAsync({
@@ -94,18 +84,26 @@ const RoomList = () => {
         videoType: isYoutube ? 'youtube' : 'default'
       });
     } catch (error) {
-      // Error handling is done in the mutation
       toast.error("Failed to attach video");
     }
   };
 
   const handleYoutubeUrlSubmit = async () => {
+    if (!youtubeUrl.trim()) {
+      toast.error("Please enter a YouTube URL");
+      return;
+    }
+
     try {
-      const response = await axios1.post("/video/validate-youtube", {
-        url: youtubeUrl
-      });
-      setYoutubeVideoInfo(response.data);
+      const response = await axios1.get(`/public/yt?url=${youtubeUrl}`);
+      if (response.data && response.data[0]) {
+        setYoutubeVideoInfo(response.data[0]);
+      } else {
+        setYoutubeVideoInfo(null);
+        toast.error("Could not find video information");
+      }
     } catch (error) {
+      setYoutubeVideoInfo(null);
       toast.error("Invalid YouTube URL");
     }
   };
@@ -268,46 +266,6 @@ const RoomList = () => {
                       />
                     </div>
 
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">YouTube URL</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={youtubeUrl}
-                            onChange={(e) => setYoutubeUrl(e.target.value)}
-                            placeholder="Paste YouTube URL..."
-                            className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleYoutubeUrlValidate(youtubeUrl)}
-                            disabled={isValidatingYoutube || !youtubeUrl}
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg disabled:opacity-50"
-                          >
-                            {isValidatingYoutube ? 'Checking...' : 'Validate'}
-                          </button>
-                        </div>
-                      </div>
-
-                      {youtubeVideoInfo && (
-                        <div className="mt-4 bg-gray-700 rounded-lg p-4">
-                          <div className="flex gap-4">
-                            <img 
-                              src={youtubeVideoInfo.thumb} 
-                              alt={youtubeVideoInfo.title}
-                              className="w-32 h-24 object-cover rounded"
-                            />
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-white">{youtubeVideoInfo.title}</h4>
-                              <p className="text-sm text-gray-400 mt-1">By {youtubeVideoInfo.creator}</p>
-                              <p className="text-sm text-gray-400">{youtubeVideoInfo.views.toLocaleString()} views</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -330,73 +288,101 @@ const RoomList = () => {
             {rooms?.map((room) => (
               <motion.div
                 key={room.id}
-                className="bg-gray-700 rounded-lg p-6"
+                className="bg-gray-700 rounded-xl p-8 flex flex-col"
                 whileHover={{ scale: 1.01 }}
               >
-                <div className="aspect-video bg-gray-600 rounded-lg mb-4 flex items-center justify-center " onClick={() => handleRoomClick(room)}>
+                <div 
+                  className="aspect-video bg-gray-600 rounded-xl mb-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-500/50 transition-colors" 
+                  onClick={() => handleRoomClick(room)}
+                >
                   {room.video_key ? (
-                    <VideoCameraIcon className="w-16 h-16 text-blue-400" />
+                    <>
+                      {room.video_type === VideoType.YOUTUBE ? (
+                        <PlayCircleIcon className="w-24 h-24 text-red-400" />
+                      ) : (
+                        <VideoCameraIcon className="w-24 h-24 text-blue-400" />
+                      )}
+                      <span className={`mt-2 px-3 py-1 text-sm rounded-full ${
+                        room.video_type === VideoType.YOUTUBE 
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {room.video_type === VideoType.YOUTUBE ? 'YouTube Video' : 'Uploaded Video'}
+                      </span>
+                    </>
                   ) : (
-                    <VideoCameraIcon className="w-16 h-16 text-gray-400" />
+                    <>
+                      <VideoCameraIcon className="w-24 h-24 text-gray-400" />
+                      <span className="mt-2 text-sm text-gray-400">
+                        No video attached
+                      </span>
+                    </>
                   )}
                 </div>
 
-                <div className="flex justify-between items-start">
-                  <div className="w-full">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-semibold">
-                        {room.name}
-                      </h3>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        room.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                        room.status === 'inactive' ? 'bg-yellow-500/20 text-yellow-400' :
-                        room.status === 'deleted' ? 'bg-red-500/20 text-red-400' :
-                        'bg-blue-500/20 text-blue-400' // default for 'created'
-                      }`}>
-                        {room.status?.charAt(0).toUpperCase() + room.status?.slice(1)}
-                      </span>
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-4 mb-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-semibold">{room.name}</h3>
+                        <span className={`px-3 py-1 text-sm rounded-full ${
+                          room.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                          room.status === 'inactive' ? 'bg-yellow-500/20 text-yellow-400' :
+                          room.status === 'deleted' ? 'bg-red-500/20 text-red-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {room.status?.charAt(0).toUpperCase() + room.status?.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-base text-gray-400">{room.description}</p>
                     </div>
-                    <p className="text-sm text-gray-400 mt-1">{room.description}</p>
                     
-                    {!room.video_key && (
-                      <div className="mt-3 space-y-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => deleteRoom.mutate(room.id)}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <TrashIcon className="w-6 h-6" />
+                    </motion.button>
+                  </div>
+
+                  {!room.video_key && (
+                    <div className="space-y-3">
+                      <div className="flex gap-3">
                         <select
                           onChange={(e) => handleAttachVideo(room.id, e.target.value)}
-                          className="w-full px-3 py-1.5 text-sm bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-4 py-3 text-base bg-gray-600 rounded-xl"
                         >
-                          <option value="">Attach processed video...</option>
+                          <option value="">Select a processed video...</option>
                           {videos?.map((video) => (
                             <option key={video.id} value={video.id}>
                               {video.title}
                             </option>
                           ))}
                         </select>
-
+                        
                         <button
                           onClick={() => {
                             setSelectedRoomId(room.id);
                             setIsYoutubeModalOpen(true);
                           }}
+                          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-xl flex items-center gap-2 whitespace-nowrap"
                         >
-                          Add YouTube Video
+                          <VideoCameraIcon className="w-5 h-5" />
+                          <span>Add YouTube</span>
                         </button>
                       </div>
-                    )}
-
-                    <div className="mt-4 text-sm text-gray-400 space-y-1">
-                      <p>Created: {formatDate(room.created_at)}</p>
-                      <p>Updated: {formatDate(room.updated_at)}</p>
+                      <p className="text-sm text-gray-400">
+                        Add a video from your library or import from YouTube
+                      </p>
                     </div>
-                  </div>
+                  )}
 
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => deleteRoom.mutate(room.id)}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    <TrashIcon className="w-6 h-6" />
-                  </motion.button>
+                  <div className="mt-auto pt-6 flex justify-between space-y-1 text-sm text-gray-400">
+                    <p>Created: {formatDate(room.created_at)}</p>
+                    <p>Updated: {formatDate(room.updated_at)}</p>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -411,7 +397,12 @@ const RoomList = () => {
         youtubeUrl={youtubeUrl}
         onUrlChange={setYoutubeUrl}
         onValidate={handleYoutubeUrlSubmit}
-        videoInfo={youtubeVideoInfo}
+        videoInfo={youtubeVideoInfo ? {
+          title: youtubeVideoInfo.title,
+          thumb: youtubeVideoInfo.thumb,
+          creator: youtubeVideoInfo.creator,
+          views: youtubeVideoInfo.views
+        } : null}
       />
     </div>
   );

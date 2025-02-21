@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { PlusIcon, TrashIcon, VideoCameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useRecoilValue } from 'recoil';
 import { userState } from '../../store/userStore';
@@ -7,7 +7,6 @@ import { useVideoUpload, useVideos } from '../../hooks/useVideo';
 import VideoSkeleton from './VideoSkeleton';
 import { ProcessingStatus } from '../../types/video';
 import { toast } from 'sonner';
-import { useBlocker } from 'react-router-dom';
 
 import axios1 from '../../config/axios';
 import axios,{isAxiosError} from 'axios';

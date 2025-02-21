@@ -2,6 +2,7 @@ import requests
 from urllib.parse import urlparse, parse_qs
 
 # YouTube Data API Key (replace with your own API key)
+YOUTUBE_API_KEY = "AIzaSyBOujqJbyGYrOahP72-u931AgQeBNoeNzU"
 
 
 def extract_video_id(url):

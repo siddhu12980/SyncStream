@@ -85,6 +85,8 @@ async def auth_middleware(request: Request, call_next: Callable):
         "/s3",
         "/ws",
         "/public/room",
+        "/public/yt",
+        "/api-docs",
         "/public/yt"
     ] or request.url.path.startswith("/public/room/"):  # Allow room ID lookups
         return await call_next(request)
@@ -226,8 +228,6 @@ async def get_yt_details(url:str):
         return data
     else:
         raise HTTPException(status_code=404, detail="Video not found")
-
-
 
 
 app.include_router(user_router,  prefix="/user", tags=["user"])

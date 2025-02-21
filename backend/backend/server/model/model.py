@@ -104,13 +104,14 @@ class CreateRoom(SQLModel):
 class RoomResponse(SQLModel):
     id: str
     name: str
-    video_type: VideoType
     status: RoomStatus 
     description: str
     created_by: str
     created_at: str
     updated_at: str
     video_key: Optional[str]   
+    video_type: VideoType
+    
 
     
 class AddVideoToRoom(SQLModel):

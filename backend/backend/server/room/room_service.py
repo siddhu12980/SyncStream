@@ -21,7 +21,8 @@ class RoomService:
             description=room_data.description,
             created_by=user_id,
             created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
+            video_type=VideoType.default
         )
         self.session.add(room)
         self.session.commit()
@@ -113,5 +114,6 @@ class RoomService:
             created_by=room.created_by,
             created_at=room.created_at,
             updated_at=room.updated_at,
-            video_key=room.video_key  # Changed from video_keys to video_key
+            video_key=room.video_key,
+            video_type=room.video_type
         )
