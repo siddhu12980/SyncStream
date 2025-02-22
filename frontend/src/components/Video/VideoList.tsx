@@ -36,8 +36,6 @@ const VideoList = () => {
   const { uploadVideo, isUploading } = useVideoUpload();
   const [videoToDelete, setVideoToDelete] = useState<{ id: string; title: string } | null>(null);
 
-
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -46,6 +44,8 @@ const VideoList = () => {
       setIsUploadModalOpen(true);
     }
   };
+
+  console.log("uploading", uploadVideo);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +98,9 @@ const VideoList = () => {
 
       //close the model
       setIsUploadModalOpen(false);
+
+   
+
 
       const response = await cleanAxios.post(url, formData, {
         maxBodyLength: Infinity,
@@ -336,7 +339,6 @@ const VideoList = () => {
 
                     <div className="mt-4 text-sm text-gray-400 space-y-1">
                       <p>Created: {formatDate(video.created_at)}</p>
-                      <p>Updated: {formatDate(video.updated_at)}</p>
                     </div>
                   </div>
 

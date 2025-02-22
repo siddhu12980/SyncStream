@@ -13,7 +13,7 @@ interface ChatMessage {
 export interface VideoEvent {
     type: 'video_event';
     user_id: string;
-    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    event_type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time' | 'progress';
     video_time: number;
     timestamp: string;
 }
@@ -127,7 +127,7 @@ export const useWebSocket = (roomId: string, userName: string, userId: string, i
   }, [userId, userName]);
 
   const sendVideoEvent = useCallback((event: {
-    type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time';
+    type: 'play' | 'pause' | 'forward_10' | 'back_10' | 'video_time' | 'progress';
     video_time: number;
   }) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -146,7 +146,7 @@ export const useWebSocket = (roomId: string, userName: string, userId: string, i
 
   const onVideoEvent = useCallback((callback: (event: VideoEvent) => void) => {
     videoEventCallbackRef.current = callback;
-    
+
   }, []);
 
   return {

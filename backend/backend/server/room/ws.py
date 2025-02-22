@@ -43,16 +43,7 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, nam
                     **data
                 }
 
-                if event_type == "chat":
-                    if "message" not in data:
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": "Missing chat message"
-                        })
-                        continue
-                    await manager.broadcast_to_room(room_id, message)
-                
-                elif event_type == "video_event":
+                if event_type == "video_event":
                     if not manager.is_room_owner(room_id, user_id):
                         print(f"Non-owner {user_id} tried to control video")
                         await websocket.send_json({
@@ -67,8 +58,26 @@ async def handle_websocket(websocket: WebSocket, room_id: str, user_id: str, nam
                             "message": "Missing video time"
                         })
                         continue
-                        
-                    await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
+                    
+                    print("--------------------------------")
+                    print(f"Received video event from {user_id}: {data}")
+                    print("--------------------------------")
+                    
+                    # Handle video progress updates
+                    if data.get("event_type") == "progress":
+                        video_state = data["video_time"]
+                        await manager.update_video_state(room_id, video_state)
+                    else:
+                        await manager.broadcast_to_room(room_id, message, exclude_user=user_id)
+                
+                elif event_type == "chat":
+                    if "message" not in data:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Missing chat message"
+                        })
+                        continue
+                    await manager.broadcast_to_room(room_id, message)
                 
                 else:
                     await websocket.send_json({

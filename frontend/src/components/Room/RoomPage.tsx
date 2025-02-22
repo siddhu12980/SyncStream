@@ -85,7 +85,7 @@ export default function RoomPage() {
     useWebSocket(id, user_name, user_id, isAdmin);
 
   const [lastVideoEvent, setLastVideoEvent] = useState<{
-    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
+    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time" | "progress";
     video_time: number;
   } | null>(null);
 
@@ -125,11 +125,15 @@ export default function RoomPage() {
   }, [messages, isChatOpen, user_id]);
 
   useEffect(() => {
-
     if (!isAdmin) {
       onVideoEvent((event) => {
-        console.log("Handling Remote Video Event:", event);
-        setLastVideoEvent(event);
+        console.log("Video Event Received:", event);
+        if (event.type === 'video_event' && 'video_time' in event) {
+          setLastVideoEvent({
+            event_type: event.event_type,
+            video_time: event.video_time
+          });
+        }
       });
     }
   }, [isAdmin, onVideoEvent]);

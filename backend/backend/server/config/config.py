@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     JWT_SECRET: str
     JWT_ALGORITHM: str
+    CELERY_BROKER_URL : str
+    CELERY_RESULT_BACKEND: str 
     
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 

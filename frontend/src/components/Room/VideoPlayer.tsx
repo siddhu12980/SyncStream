@@ -5,12 +5,12 @@ interface VideoPlayerProps {
   videoUrl: string;
   isAdmin?: boolean;
   onVideoEvent?: (event: {
-    type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
+    type: "play" | "pause" | "forward_10" | "back_10" | "video_time" | "progress";
     video_time: number;
   }) => void;
 
   remoteVideoEvent?: {
-    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
+    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time" | "progress";
     video_time: number;
   } | null;
 } 
@@ -25,7 +25,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
   const videoRef = (forwardedRef || localRef) as React.MutableRefObject<HTMLVideoElement | null>;
   const hlsRef = useRef<Hls | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!videoRef.current) return;
     const video = videoRef.current;
     console.log("Initializing HLS player with URL:", videoUrl);
@@ -49,7 +49,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
         });
       });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
+      hls.on(Hls.Events.ERROR, (_, data) => {
         console.error("HLS error:", data);
         if (data.fatal) {
           switch (data.type) {

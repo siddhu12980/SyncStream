@@ -17,6 +17,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_rooms: Dict[str, Dict[str, WebSocket]] = {}
         self.room_owners: Dict[str, str] = {}
+        self.video_states: Dict[str, str] = {}
 
     async def connect(self, websocket: WebSocket, room_id: str, user_id: str, name: str):
         try:
@@ -32,13 +33,19 @@ class ConnectionManager:
                     await websocket.close(code=4000, reason="Room not found")
                     return False
 
+                # Initialize room in active_rooms if it doesn't exist
+                if room_id not in self.active_rooms:
+                    self.active_rooms[room_id] = {}
+
                 # If user is the room owner
                 if room.created_by == user_id:
                     print(f"Owner {user_id} connecting to room {room_id}")
-                    if room_id not in self.active_rooms:
-                        self.active_rooms[room_id] = {}
                     self.active_rooms[room_id][user_id] = websocket
                     self.room_owners[room_id] = user_id
+                    
+                    # Initialize video state if not exists
+                    if room_id not in self.video_states:
+                        self.video_states[room_id] = "0"  # Default video time
                     
                     # Activate room
                     await activate_room(room_id)
@@ -56,27 +63,58 @@ class ConnectionManager:
                         return False
                     
                     self.active_rooms[room_id][user_id] = websocket
-                    print(f"User {user_id} added to room {room_id}")
 
-            # Notify about new user
-            await self.broadcast_to_room(
-                room_id,
-                {
-                    "type": "join",
-                    "user_name": name,
-                    "user_id": user_id,
-                    "is_owner": room.created_by == user_id,
-                    "timestamp": datetime.now().isoformat()
-                }
-            )
-            return True
+                # Send current video state to new user if it exists
+           
+      
+           
+                try:
+                    print('\n')
+                    print("-------------------------------- " )
+                    print("Room ID: ", room_id)
+                    print("Sending video state to user: ", user_id, "Video state: ", self.video_states[room_id])
+                    print("--------------------------------")
+                    print('\n')
+                    if room_id in self.video_states:
+                        await websocket.send_json({
+                            "type": "video_event",
+                            "user_id": user_id,
+                            "user_name": name,
+                            "timestamp": datetime.now().isoformat(),
+                            "event_type": "play",
+                            "video_time": self.video_states[room_id]
+                        })
+                except Exception as e:
+                    print(f"Error sending video state: {str(e)}")
+                    # Continue even if video state send fails
+
+                # Notify about new user
+                try:
+                    await self.broadcast_to_room(
+                        room_id,
+                        {
+                            "type": "join",
+                            "user_name": name,
+                            "user_id": user_id,
+                            "is_owner": room.created_by == user_id,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error broadcasting join message: {str(e)}")
+                    # Continue even if broadcast fails
+
+                return True
 
         except Exception as e:
-            print(f"Error in connect: {str(e)}")
+            print(f"Error in connect for room {room_id}: {str(e)}")
             try:
                 await websocket.close(code=4000, reason="Connection error")
             except:
                 pass
+            # Clean up any partial connection state
+            if room_id in self.active_rooms and user_id in self.active_rooms[room_id]:
+                del self.active_rooms[room_id][user_id]
             return False
 
     async def disconnect(self, room_id: str, user_id: str):
@@ -131,6 +169,10 @@ class ConnectionManager:
                     }
                 )
                 
+                # Clean up video state
+                if room_id in self.video_states:
+                    del self.video_states[room_id]
+                
                 await self.close_all_connections(room_id)
             except Exception as e:
                 print(f"Error closing room {room_id}: {str(e)}")
@@ -171,6 +213,10 @@ class ConnectionManager:
     def is_room_owner(self, room_id: str, user_id: str) -> bool:
         """Check if user is the room owner"""
         return self.room_owners.get(room_id) == user_id
+
+    async def update_video_state(self, room_id: str, state: dict):
+        """Update video state for a room"""
+        self.video_states[room_id] = state
 
 
 async def activate_room(room_id: str):

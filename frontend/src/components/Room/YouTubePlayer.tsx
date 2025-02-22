@@ -1,15 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactPlayer from 'react-player';
 
 interface YouTubePlayerProps {
   videoUrl: string;
   isAdmin?: boolean;
   onVideoEvent?: (event: {
-    type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
+    type: "play" | "pause" | "forward_10" | "back_10" | "video_time" | "progress";
     video_time: number;
   }) => void;
   remoteVideoEvent?: {
-    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time";
+    event_type: "play" | "pause" | "forward_10" | "back_10" | "video_time" | "progress";
     video_time: number;
   } | null;
 }
@@ -22,6 +22,7 @@ export const YouTubePlayer = ({
 }: YouTubePlayerProps) => {
   const playerRef = useRef<ReactPlayer>(null);
   const lastEventRef = useRef<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   const handlePlay = () => {
     if (isAdmin && onVideoEvent && playerRef.current) {
@@ -45,34 +46,41 @@ export const YouTubePlayer = ({
 
   // Handle remote events for non-admin users
   useEffect(() => {
-    if (!remoteVideoEvent || isAdmin || !playerRef.current) return;
+    if (!remoteVideoEvent || isAdmin || !playerRef.current || !isReady) {
+      console.log("Skipping remote event:", { 
+        remoteVideoEvent, 
+        isAdmin, 
+        hasPlayer: !!playerRef.current,
+        isReady 
+      });
+      return;
+    }
 
-    console.log("remoteVideoEvent", remoteVideoEvent);
+    console.log("Processing remote event:", remoteVideoEvent);
 
     const player = playerRef.current;
     const currentTime = player.getCurrentTime();
     const timeDiff = Math.abs(currentTime - remoteVideoEvent.video_time);
 
-    console.log("Handling remote event:", remoteVideoEvent);
+    console.log("Current state:", { currentTime, timeDiff });
 
     switch (remoteVideoEvent.event_type) {
       case "play":
-        if (timeDiff > 1) {
-          player.seekTo(remoteVideoEvent.video_time);
-        }
+        console.log("Handling play event");
+        player.seekTo(remoteVideoEvent.video_time, 'seconds');
         player.getInternalPlayer()?.playVideo();
         break;
 
       case "pause":
-        if (timeDiff > 1) {
-          player.seekTo(remoteVideoEvent.video_time);
-        }
+        console.log("Handling pause event");
+        player.seekTo(remoteVideoEvent.video_time, 'seconds');
         player.getInternalPlayer()?.pauseVideo();
         break;
 
       case "video_time":
+        console.log("Handling video_time event");
         if (timeDiff > 1) {
-          player.seekTo(remoteVideoEvent.video_time);
+          player.seekTo(remoteVideoEvent.video_time, 'seconds');
           player.getInternalPlayer()?.playVideo();
         }
         break;
@@ -87,7 +95,7 @@ export const YouTubePlayer = ({
         player.getInternalPlayer()?.playVideo();
         break;
     }
-  }, [remoteVideoEvent, isAdmin]);
+  }, [remoteVideoEvent, isAdmin, isReady]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -105,16 +113,17 @@ export const YouTubePlayer = ({
         controls={true}
         playing={false}
         muted={true}
+        onReady={() => setIsReady(true)}
         onPlay={handlePlay}
         onPause={handlePause}
-        // onProgress={({ playedSeconds }) => {
-        //   if (isAdmin && onVideoEvent && playerRef.current) {
-        //     onVideoEvent({
-        //       type: "video_time",
-        //       video_time: playedSeconds
-        //     });
-        //   }
-        // }}
+        onProgress={({ playedSeconds }) => {
+          if (isAdmin && onVideoEvent && playerRef.current) {
+            onVideoEvent({
+              type: "progress",
+              video_time: playedSeconds
+            });
+          }
+        }}
         config={{
           youtube: {
             playerVars: {
@@ -122,6 +131,8 @@ export const YouTubePlayer = ({
               controls: 1,
               rel: 0,
               fs: 1,
+              autoplay: 1,
+              mute: 1,
               enablejsapi: 1,
               origin: window.location.origin,
               widget_referrer: window.location.origin,
