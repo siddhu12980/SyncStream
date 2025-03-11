@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: syncstream-service
+  labels:
+    app: syncstream
+spec:
+  selector:
+    app: syncstream
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: syncstream-deployment
+  labels:
+    app: syncstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: syncstream
+  template:
+    metadata:
+      labels:
+        app: syncstream
+    spec:
+      containers:
+        - name: syncstream
+          image: syncstream-image
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:postgres@db:5432/syncstream
+            - name: AWS_ACCESS_KEY_ID
+              value: ${AWS_ACCESS_KEY_ID}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: ${AWS_SECRET_ACCESS_KEY}
+            - name: AWS_DEFAULT_REGION
+              value: ap-south-1
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: AWS_S3_BUCKET
+              value: syncstream-videos
+            
+              

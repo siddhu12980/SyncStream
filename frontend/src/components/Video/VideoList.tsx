@@ -59,86 +59,95 @@ const VideoList = () => {
         title: newVideoTitle
       });
 
-      
-
-
       // Get presigned URL and video ID
       const { data: presignedData } = await axios1.post('/video', { title: newVideoTitle });
       const { id, url, fields } = presignedData;
 
-      // Store the upload details in localStorage
-      localStorage.setItem(`upload_${id}`, JSON.stringify({
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        title: newVideoTitle,
-        progress: 0
-      }));
+      console.log("Presigned URL data:", presignedData);
 
-
-      // Use the browser's FormData
+      // Create FormData with all required fields
       const formData = new FormData();
-      formData.append('key', fields.key);
-      formData.append('x-amz-algorithm', fields['x-amz-algorithm']);
-      formData.append('x-amz-credential', fields['x-amz-credential']);
-      formData.append('x-amz-date', fields['x-amz-date']);
-      formData.append('policy', fields.policy);
-      formData.append('x-amz-signature', fields['x-amz-signature']);
+      
+      // Log all fields from the presigned URL
+      console.log("Fields from presigned URL:", fields);
+      
+      // IMPORTANT: Order matters for S3. Add fields in this specific order:
+      // formData.append('key', fields.key);
+      // formData.append('acl', 'private');
+      // formData.append('x-amz-algorithm', 'AWS4-HMAC-SHA256');
+      // formData.append('x-amz-credential', fields['x-amz-credential']);
+      // formData.append('x-amz-date', fields['x-amz-date']);  // Make sure this is present
+      // formData.append('policy', fields.policy);
+      // formData.append('x-amz-signature', fields.signature);
+      // formData.append('Content-Type', selectedFile.type);
+
+      // Add all fields from the presigned URL response
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+
       formData.append('file', selectedFile);
 
+      
 
-      console.log("headers", formData);
-
+      // Log the FormData entries to verify all fields are present
+      console.log("FormData entries:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
 
       // Create a clean axios instance without auth headers
-      const cleanAxios = axios.create();  
+      const cleanAxios = axios.create();
       delete cleanAxios.defaults.headers.common['Authorization'];
-      
-      // Upload to S3 with the clean instance
-      console.log("uploadig to url", url);
 
-      //close the model
+      //close the modal
       setIsUploadModalOpen(false);
-
-   
-
 
       const response = await cleanAxios.post(url, formData, {
         maxBodyLength: Infinity,
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
         },
         onUploadProgress: (progressEvent) => {
           const progress = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total || 100)
           );
-          console.log("progress", progress);
+          console.log("Upload progress:", progress);
           setUploadProgress(prev => ({ ...prev, [id]: progress }));
         },
       });
 
-      //on 100% progress, remove the upload from localStorage
+      console.log('S3 upload response:', response);
+
+      // Update progress and clean up
       setUploadProgress(prev => ({ ...prev, [id]: 100 }));
       setTimeout(() => {
         localStorage.removeItem(`upload_${id}`);
       }, 1000);
-
-
-      console.log("response ");
-      console.log('S3 upload response:', response);
 
       startPolling(id);
       
     } catch (error: any) {
       console.error('Upload failed:', error);
       if (isAxiosError(error)) {
-        console.error('Response:', error.response?.data);
+        console.error('Response data:', error.response?.data);
+        console.error('Request config:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          data: error.config?.data
+        });
+        
+        // Log the XML error response if available
+        if (error.response?.data && typeof error.response.data === 'string') {
+          console.error('S3 Error Response:', error.response.data);
+        }
       }
       toast.error('Failed to upload video');
     }
 
     setNewVideoTitle('');
     setSelectedFile(null);
-    setIsUploadModalOpen(false);
   };
 
   const startPolling = (videoId: string) => {

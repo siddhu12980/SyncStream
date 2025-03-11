@@ -1,0 +1,51 @@
+FROM python:3.12-slim
+
+# Set initial working directory to /backend
+WORKDIR /backend
+
+# Install system dependencies including FFmpeg
+RUN apt-get update && apt-get install -y \
+    curl \
+    libmagic1 \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    python3-dev \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - && \
+    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
+
+# Configure poetry to not create virtual environment
+RUN poetry config virtualenvs.create false && \
+    poetry config virtualenvs.in-project false
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
+
+# Install dependencies
+ARG INSTALL_DEV=true
+RUN if [ "$INSTALL_DEV" = "true" ] ; then \
+    poetry install --no-root ; \
+    else \
+    poetry install --no-root --no-dev ; \
+    fi
+
+# Copy application code
+COPY . .
+
+# Change working directory to inner backend folder
+WORKDIR /backend/backend
+
+# Add the current directory to PYTHONPATH
+ENV PYTHONPATH=/backend
+
+# Create a shell script to check directory structure and then run the main command
+RUN echo '#!/bin/sh\necho "Current directory:"\npwd\necho "\nDirectory structure:"\nls -la\necho "\nParent directory structure:"\nls -la ..\necho "\nStarting worker..."\nexec poetry run celery -A worker.tasks worker --loglevel=INFO' > /start.sh && \
+    chmod +x /start.sh
+
+CMD ["/start.sh"]
+
+# celery -A backend.worker.tasks worker --loglevel=INFO

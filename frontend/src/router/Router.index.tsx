@@ -5,7 +5,6 @@ import { useRecoilValue } from 'recoil';
 import { userState } from '../store/userStore';
 import { Navigate } from 'react-router-dom';
 import RoomPage from "../components/Room/RoomPage"
-import TestRoom from "../components/Room/TestRoom"
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const auth = useRecoilValue(userState);
@@ -17,7 +16,6 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/test" element={<TestRoom />} />
         <Route
           path="/dashboard/*"
           element={

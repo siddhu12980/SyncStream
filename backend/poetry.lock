@@ -632,6 +632,17 @@ yaml = ["PyYAML (>=3.10)"]
 zookeeper = ["kazoo (>=2.8.0)"]
 
 [[package]]
+name = "libmagic"
+version = "1.0"
+description = "libmagic bindings"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "libmagic-1.0.tar.gz", hash = "sha256:649f1ce7fb7c92796badbb812555e4a926351da4f5cdf82e810b5cd371aedf8d"},
+]
+
+[[package]]
 name = "passlib"
 version = "1.7.4"
 description = "comprehensive password hashing framework supporting over 30 schemes"
@@ -1433,4 +1444,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "1074d9ed43b7903135cf5d1f76eb8b837a042944943e1ecc879d4d5289a1bd88"
+content-hash = "d8c90967e84dd746a7fa940ba0b245d56b5fb41e8b57e22d70cf6fb50165f702"
