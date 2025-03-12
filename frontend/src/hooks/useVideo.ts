@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ProcessingStatus } from '../types/video';
 
 export const useVideoUpload = () => {
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, _] = useState(0);
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({

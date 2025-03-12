@@ -3,15 +3,7 @@ import { roomService } from '../services/roomService';
 import { toast } from 'sonner';
 import { VideoType } from '@/types/room';
 
-interface YoutubeVideoInfo {
-  title: string;
-  url: string;
-  thumb: string;
-  description: string;
-  creator: string;
-  creatorurl: string;
-  views: number;
-}
+
 
 export const useRooms = () => {
   return useQuery({
