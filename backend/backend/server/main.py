@@ -52,13 +52,15 @@ app = MyFastAPI(
 origins = [ 
     "http://localhost:5173",    # Your frontend dev server
     "http://127.0.0.1:5173",   # Alternative localhost
-    "http://localhost:3000",    # Add any other origins you need
+    "http://localhost:3000", 
+    "https://sync-stream-one.vercel.app",
+    "https://sync-stream-khaki.vercel.app"  # Add any other origins you need
 ]
 
 # Add CORS middleware with more specific configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # WARNING: Don't use in production
+    allow_origins=origins,  # WARNING: Don't use in production
     allow_credentials=False,  # Must be False if allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,7 +90,7 @@ async def auth_middleware(request: Request, call_next: Callable):
         "/public/yt",
         "/api-docs",
         "/public/yt"
-    ] or request.url.path.startswith("/public/room/"):  # Allow room ID lookups
+    ] or request.url.path.startswith("/public/room/"):  
         return await call_next(request)
 
     try:
