@@ -49,7 +49,7 @@ export const useWebSocket = (roomId: string, userName: string, userId: string, i
     }
 
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/${roomId}?user_id=${userId}&name=${userName}`);
+    const ws = new WebSocket(`${process.env.VITE_WS_URL}/${roomId}?user_id=${userId}&name=${userName}`);
 
     wsRef.current = ws;
 
