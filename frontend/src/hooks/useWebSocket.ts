@@ -1,4 +1,4 @@
-import config from "@/config/config";
+import config from "../config/config";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 
