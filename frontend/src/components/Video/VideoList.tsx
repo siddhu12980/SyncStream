@@ -13,6 +13,7 @@ import axios,{isAxiosError} from 'axios';
 
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { ConfirmDialog } from '../lib/model';
+import config from '../../config/config';
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   
@@ -52,6 +53,11 @@ const VideoList = () => {
     if (!selectedFile || !newVideoTitle.trim()) return;
 
     try {
+
+      console.log("--------------This is to check api url----------------")
+
+      console.log("API URL", config.API_URL);
+
       console.log('Starting upload process with:', {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
@@ -71,17 +77,7 @@ const VideoList = () => {
       // Log all fields from the presigned URL
       console.log("Fields from presigned URL:", fields);
       
-      // IMPORTANT: Order matters for S3. Add fields in this specific order:
-      // formData.append('key', fields.key);
-      // formData.append('acl', 'private');
-      // formData.append('x-amz-algorithm', 'AWS4-HMAC-SHA256');
-      // formData.append('x-amz-credential', fields['x-amz-credential']);
-      // formData.append('x-amz-date', fields['x-amz-date']);  // Make sure this is present
-      // formData.append('policy', fields.policy);
-      // formData.append('x-amz-signature', fields.signature);
-      // formData.append('Content-Type', selectedFile.type);
 
-      // Add all fields from the presigned URL response
       Object.entries(fields).forEach(([key, value]) => {
         formData.append(key, value as string);
       });

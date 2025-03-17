@@ -25,7 +25,6 @@ interface Room {
 
 export default function RoomPage() {
   const { id } = useParams();
-  //this is the count ref for the unread messages
   const lastMessageRef = useRef<number>(0);
 
   const navigate = useNavigate();
